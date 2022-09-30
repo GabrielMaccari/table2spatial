@@ -11,9 +11,9 @@ from os import getcwd as os_getcwd
 from PyQt6.QtWidgets import QMainWindow, QApplication, QLabel, QCheckBox, QComboBox, QPushButton, QFileDialog, QMessageBox, QScrollArea, QGroupBox, QGridLayout, QInputDialog
 from PyQt6.QtGui import QIcon, QFont
 from pyproj.database import query_crs_info
-import pandas
 from numpy import nan
-from geopandas import GeoDataFrame, points_from_xy, read_file
+import pandas
+import geopandas
 from MapWindow import MapWindow
 
 class table2spatialApp(QMainWindow):
@@ -410,8 +410,10 @@ class table2spatialApp(QMainWindow):
         
         if self.N_column=='' or self.E_column=='':
             file_options = 'Pasta de Trabalho do Excel (*.xlsx);;CSV (*.csv)'
+            output_type = 'DataFrame'
         else:
             file_options = 'Geopackage (pontos) (*.gpkg);;ESRI Shapefile (pontos) (*.shp);;GeoJSON (*.json);; Pasta de Trabalho do Excel (*.xlsx);;CSV (*.csv)'
+            output_type = 'GeoDataFrame'
             EPSG = self.CRS_dict[self.CRS]
         
         self.outFile = QFileDialog.getSaveFileName(self, 'Salvar DataFrame', self.folder, file_options)
@@ -419,44 +421,53 @@ class table2spatialApp(QMainWindow):
         
         if path!='':
             try:
-                GDF = GeoDataFrame(self.DF, geometry=points_from_xy(self.DF[self.E_column], self.DF[self.N_column]))
-                GDF.set_crs(epsg=EPSG, inplace=True)
-                
-                if path.endswith('.shp'):
-                    GDF.to_file(path)
-                elif path.endswith('.gpkg'):
-                    layerName, ok = QInputDialog.getText(self, 'Nome da camada', 'Nome para a camada do GeoPackage:', text='layer')
-                    if ok:
-                        GDF.to_file(path, driver='GPKG', layer=layerName)
-                elif path.endswith('.json'):
-                    GDF.to_file(path, driver='GeoJSON')
-                elif path.endswith('.xlsx'):
-                    GDF.to_excel(path, index=False)
-                elif path.endswith('.csv'):
-                    GDF.to_csv(path, sep=';', encoding='utf-8', decimal=',', index=False)
+                if output_type == 'DataFrame' or path.endswith('.xlsx') or path.endswith('.csv'):
+                    if path.endswith('.xlsx'):
+                        self.DF.to_excel(path, index=False)
+                    if path.endswith('.csv'):
+                        self.DF.to_csv(path, sep=';', encoding='utf-8', decimal=',', index=False)
                     
-                if len(GDF)<=150:
-                    dlg = QMessageBox(QMessageBox.Icon.Question, 'Sucesso',
-                                      'DataFrame exportado com sucesso! Deseja visualizar uma prévia dos resultados?',
-                                      QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                                      self)
-                    reply = dlg.exec()
-                    
-                    if reply == QMessageBox.StandardButton.Yes:
-                        try:
-                            new_GDF = read_file(path)
-                            new_GDF.set_crs(epsg=EPSG, inplace=True)
-                            mapView = MapWindow(new_GDF, self)
-                            mapView.show()
-                        except Exception as e:
-                            msg = QMessageBox(parent=self, text='Não foi possível plotar os dados no mapa.\n\n%s' % (str(e)))
-                            msg.setWindowTitle('Erro')
-                            msg.setIcon(QMessageBox.Icon.Critical)
-                            msg.exec()
-                else:
                     msg = QMessageBox(parent=self, text='DataFrame exportado com sucesso!')
                     msg.setWindowTitle('Sucesso')
                     msg.exec()
+                    
+                else:
+                    GDF = geopandas.GeoDataFrame(self.DF, geometry=geopandas.points_from_xy(self.DF[self.E_column], self.DF[self.N_column]))
+                    GDF.set_crs(epsg=EPSG, inplace=True)
+                    
+                    if path.endswith('.shp'):
+                        GDF.to_file(path)
+                        ok = True
+                    elif path.endswith('.gpkg'):
+                        layerName, ok = QInputDialog.getText(self, 'Nome da camada', 'Nome para a camada do GeoPackage:', text='layer')
+                        if ok:
+                            GDF.to_file(path, driver='GPKG', layer=layerName)
+                    elif path.endswith('.json'):
+                        GDF.to_file(path, driver='GeoJSON')
+                        ok = True
+                        
+                    if ok and len(GDF)<=150:
+                        dlg = QMessageBox(QMessageBox.Icon.Question, 'Sucesso',
+                                          'DataFrame exportado com sucesso! Deseja visualizar uma prévia dos resultados?',
+                                          QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                          self)
+                        reply = dlg.exec()
+                        
+                        if reply == QMessageBox.StandardButton.Yes:
+                            try:
+                                new_GDF = geopandas.read_file(path)
+                                new_GDF.set_crs(epsg=EPSG, inplace=True, allow_override=True)
+                                mapView = MapWindow(new_GDF, self)
+                                mapView.show()
+                            except Exception as e:
+                                msg = QMessageBox(parent=self, text='Não foi possível plotar os dados no mapa.\n\n%s' % (str(e)))
+                                msg.setWindowTitle('Erro')
+                                msg.setIcon(QMessageBox.Icon.Critical)
+                                msg.exec()
+                    else:
+                        msg = QMessageBox(parent=self, text='DataFrame exportado com sucesso!')
+                        msg.setWindowTitle('Sucesso')
+                        msg.exec()
                 
             except Exception as e:
                 if str(e)=="ESRI Shapefile does not support datetime fields":

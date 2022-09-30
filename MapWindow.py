@@ -8,8 +8,8 @@ Created on Wed Sep 14 13:40:59 2022
 from os import getcwd
 from PyQt6.QtWidgets import QMainWindow
 from PyQt6.QtGui import QIcon
-from PyQt6.QtWebEngineWidgets import QWebEngineView
-from folium import Map, raster_layers, GeoJson, features, map
+from PyQt6.QtWebEngineWidgets import QWebEngineView #pip install PyQt6-WebEngine
+import folium
 from folium.plugins import MeasureControl, MousePosition, Geocoder
 from io import BytesIO
 #from geopandas import GeoDataFrame
@@ -40,7 +40,6 @@ class MapWindow(QMainWindow):
         self.setMaximumHeight(500)
         
     def build_webmap(self):
-        
         GDF = self.GDF.to_crs(4326)
         fields = GDF.columns.to_list()
         dtypes = GDF.dtypes.to_list()
@@ -51,30 +50,30 @@ class MapWindow(QMainWindow):
         
         yx = [GDF.geometry.y[0], GDF.geometry.x[0]]
         
-        webmap = Map(location=yx, zoom_start = 12, minZoom = 5, 
+        webmap = folium.Map(location=yx, zoom_start = 12, minZoom = 5, 
                             control_scale = True, zoomControl=True, 
                             tiles='openstreetmap', attributionControl=True)
         
-        raster_layers.WmsTileLayer('https://www.google.cn/maps/vt?lyrs=s@189&gl=cn&x={x}&y={y}&z={z}',
+        folium.raster_layers.WmsTileLayer('https://www.google.cn/maps/vt?lyrs=s@189&gl=cn&x={x}&y={y}&z={z}',
                                           'Google Satellite', name='Google Satellite', overlay=False).add_to(webmap)
         
         f = fields[0:-1] if len(fields)<=11 else fields[0:11]
         
-        GeoJson(
+        folium.GeoJson(
             GDF.to_json(),
             name='Pontos',
             show=True,
-            tooltip=features.GeoJsonTooltip(
+            tooltip=folium.features.GeoJsonTooltip(
                 fields=[fields[0]],
                 labels=False
             ),
-            popup=features.GeoJsonPopup(
+            popup=folium.features.GeoJsonPopup(
                 fields=f,
                 aliases=f
             )
         ).add_to(webmap)
         
-        map.LayerControl().add_to(webmap)
+        folium.map.LayerControl().add_to(webmap)
         MeasureControl(position='topright', 
                                        primary_length_unit='meters', 
                                        secondary_length_unit='kilometers', 
