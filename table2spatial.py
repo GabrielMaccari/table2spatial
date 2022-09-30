@@ -5,19 +5,22 @@ Created on Fri Aug 26 10:15:33 2022
 @author: Gabriel Maccari
 """
 
-import sys
+from sys import argv as sys_argv
+from sys import exit as sys_exit
+from os import getcwd as os_getcwd
 from PyQt6.QtWidgets import QMainWindow, QApplication, QLabel, QCheckBox, QComboBox, QPushButton, QFileDialog, QMessageBox, QScrollArea, QGroupBox, QGridLayout, QInputDialog
 from PyQt6.QtGui import QIcon, QFont
-from os import getcwd as os_getcwd
 from pyproj.database import query_crs_info
 import pandas
-from geopandas import GeoDataFrame, points_from_xy
+from numpy import nan
+from geopandas import GeoDataFrame, points_from_xy, read_file
+from MapWindow import MapWindow
 
-class MyApp(QMainWindow):
+class table2spatialApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle('table2spatial')
-        self.setWindowIcon(QIcon('src/gdb.ico'))
+        self.setWindowIcon(QIcon('icons/windowIcon.ico'))
         
         #Variáveis
         self.folder = os_getcwd()
@@ -158,38 +161,44 @@ class MyApp(QMainWindow):
             self.clear_columns_list()
         
         if self.inFile[0]!='':
-            
-            if self.inFile[0].endswith('.csv'):
-                try:
-                    self.DF = pandas.read_csv(self.inFile[0])
-                    msg = QMessageBox(parent=self, text='Você selecionou um arquivo de texto separado por delimitador (CSV). Para um funcionamento adequado da ferramenta, certifique-se de que o separador de campo utilizado no arquivo não está presente no conteúdo das células e não coincide com o separador decimal.')
-                    msg.setWindowTitle('Atenção')
-                    msg.setIcon(QMessageBox.Icon.Warning)
-                    msg.exec()
-                except Exception as e:
-                    msg = QMessageBox(parent=self, text='Não foi possível realizar a leitura do arquivo CSV. Certifique-se de que o separador de campo utilizado no arquivo não está presente no conteúdo das células e não coincide com o separador decimal.\n\n'+str(e))
-                    msg.setWindowTitle('Erro')
-                    msg.setIcon(QMessageBox.Icon.Critical)
-                    msg.exec()
-                    return
-            else:
-                eng=('odf' if self.inFile[0].endswith('.ods') else 'openpyxl')
-                file = pandas.ExcelFile(self.inFile[0], engine=eng)
-                if len(file.sheet_names) > 1:
-                    self.enable_widgets([1], True)
-                    msg = QMessageBox(parent=self, text='O arquivo selecionado contém múltiplas abas. Caso deseje mesclar todas as abas em uma única planilha, marque a caixa "Mesclar abas com a coluna" na interface da ferramenta e selecione uma coluna em comum para realizar a mesclagem.')
-                    msg.setWindowTitle('Mesclar abas')
-                    msg.exec()
+            try:
+                if self.inFile[0].endswith('.csv'):
+                    try:
+                        self.DF = pandas.read_csv(self.inFile[0])
+                        msg = QMessageBox(parent=self, text='Você selecionou um arquivo de texto separado por delimitador (CSV). Para um funcionamento adequado da ferramenta, certifique-se de que o separador de campo utilizado no arquivo não está presente no conteúdo das células e não coincide com o separador decimal.')
+                        msg.setWindowTitle('Atenção')
+                        msg.setIcon(QMessageBox.Icon.Warning)
+                        msg.exec()
+                    except Exception as e:
+                        msg = QMessageBox(parent=self, text='Não foi possível realizar a leitura do arquivo CSV. Certifique-se de que o separador de campo utilizado no arquivo não está presente no conteúdo das células e não coincide com o separador decimal.\n\n'+str(e))
+                        msg.setWindowTitle('Erro')
+                        msg.setIcon(QMessageBox.Icon.Critical)
+                        msg.exec()
+                        return
                 else:
-                    self.enable_widgets([1], False)
-                self.DF = pandas.read_excel(file, engine=eng)
-                #self.DF.dropna(how='all', axis='columns', inplace=True)
-                remove_cols = [col for col in self.DF.columns if 'Unnamed' in col]
-                self.DF.drop(remove_cols, axis='columns', inplace=True)
-                self.DF.dropna(how='all', axis='index', inplace=True)
-            
-            self.columns = self.DF.columns.to_list()
-            self.dTypes = self.DF.dtypes.to_list()
+                    eng=('odf' if self.inFile[0].endswith('.ods') else 'openpyxl')
+                    file = pandas.ExcelFile(self.inFile[0], engine=eng)
+                    if len(file.sheet_names) > 1:
+                        self.enable_widgets([1], True)
+                        msg = QMessageBox(parent=self, text='O arquivo selecionado contém múltiplas abas. Caso deseje mesclar todas as abas em uma única planilha, marque a caixa "Mesclar abas com a coluna" na interface da ferramenta e selecione uma coluna em comum para realizar a mesclagem.')
+                        msg.setWindowTitle('Mesclar abas')
+                        msg.exec()
+                    else:
+                        self.enable_widgets([1], False)
+                    self.DF = pandas.read_excel(file, engine=eng)
+                    self.DF.columns = self.DF.columns.astype(str)
+                    remove_cols = [col for col in self.DF.columns if 'Unnamed' in col]
+                    self.DF.drop(remove_cols, axis='columns', inplace=True)
+                    self.DF.dropna(how='all', axis='index', inplace=True)
+                    self.DF.replace(r'^\s*$', nan, inplace=True, regex=True)
+                
+                self.columns = self.DF.columns.to_list()
+                self.dTypes = self.DF.dtypes.to_list()
+            except Exception as e:
+                msg = QMessageBox(parent=self, text='Não foi possível abrir o arquivo.\n\n'+str(e))
+                msg.setWindowTitle('Erro')
+                msg.setIcon(QMessageBox.Icon.Critical)
+                msg.exec()
             
             self.mergeColumn_cmb.clear()
             self.mergeColumn_cmb.addItems(self.columns)
@@ -402,7 +411,7 @@ class MyApp(QMainWindow):
         if self.N_column=='' or self.E_column=='':
             file_options = 'Pasta de Trabalho do Excel (*.xlsx);;CSV (*.csv)'
         else:
-            file_options = 'Geopackage (pontos) (*.gpkg);;ESRI Shapefile (pontos) (*.shp);; Pasta de Trabalho do Excel (*.xlsx);;CSV (*.csv)'
+            file_options = 'Geopackage (pontos) (*.gpkg);;ESRI Shapefile (pontos) (*.shp);;GeoJSON (*.json);; Pasta de Trabalho do Excel (*.xlsx);;CSV (*.csv)'
             EPSG = self.CRS_dict[self.CRS]
         
         self.outFile = QFileDialog.getSaveFileName(self, 'Salvar DataFrame', self.folder, file_options)
@@ -419,20 +428,49 @@ class MyApp(QMainWindow):
                     layerName, ok = QInputDialog.getText(self, 'Nome da camada', 'Nome para a camada do GeoPackage:', text='layer')
                     if ok:
                         GDF.to_file(path, driver='GPKG', layer=layerName)
+                elif path.endswith('.json'):
+                    GDF.to_file(path, driver='GeoJSON')
                 elif path.endswith('.xlsx'):
                     GDF.to_excel(path, index=False)
                 elif path.endswith('.csv'):
                     GDF.to_csv(path, sep=';', encoding='utf-8', decimal=',', index=False)
-                msg = QMessageBox(parent=self, text='DataFrame exportado com sucesso!')
-                msg.setWindowTitle('Sucesso')
+                    
+                if len(GDF)<=150:
+                    dlg = QMessageBox(QMessageBox.Icon.Question, 'Sucesso',
+                                      'DataFrame exportado com sucesso! Deseja visualizar uma prévia dos resultados?',
+                                      QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                      self)
+                    reply = dlg.exec()
+                    
+                    if reply == QMessageBox.StandardButton.Yes:
+                        try:
+                            new_GDF = read_file(path)
+                            new_GDF.set_crs(epsg=EPSG, inplace=True)
+                            mapView = MapWindow(new_GDF, self)
+                            mapView.show()
+                        except Exception as e:
+                            msg = QMessageBox(parent=self, text='Não foi possível plotar os dados no mapa.\n\n%s' % (str(e)))
+                            msg.setWindowTitle('Erro')
+                            msg.setIcon(QMessageBox.Icon.Critical)
+                            msg.exec()
+                else:
+                    msg = QMessageBox(parent=self, text='DataFrame exportado com sucesso!')
+                    msg.setWindowTitle('Sucesso')
+                    msg.exec()
+                
             except Exception as e:
-                msg = QMessageBox(parent=self, text='Ocorreu um erro ao exportar os dados.\n\n%s' % (str(e)))
+                if str(e)=="ESRI Shapefile does not support datetime fields":
+                    msg = QMessageBox(parent=self, text='O formato shapefile não suporta campos de data e hora. Converta as colunas do tipo "Timestamp" e "Datetime" para "String" e tente novamente.')
+                elif str(e)=="Invalid field type <class 'datetime.datetime'>":
+                    msg = QMessageBox(parent=self, text='Há um campo de data e hora com formato inválido no DataFrame. Converta as colunas de data/hora para "Datetime" ou "Timestamp" e tente novamente.')
+                else:
+                    msg = QMessageBox(parent=self, text='Ocorreu um erro ao exportar os dados.\n\n%s' % (str(e)))
                 msg.setWindowTitle('Erro')
                 msg.setIcon(QMessageBox.Icon.Critical)
-            msg.exec()
+                msg.exec()
         
 if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    window = MyApp()
+    app = QApplication(sys_argv)
+    window = table2spatialApp()
     window.show()
-    sys.exit(app.exec())
+    sys_exit(app.exec())

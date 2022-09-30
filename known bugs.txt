@@ -1,1 +1,0 @@
--Ler uma tabela que contém um Integer ou Float como nome de coluna gera um erro não previsto ao dropar as colunas/linhas vazias
