@@ -45,7 +45,8 @@ class MapWindow(QMainWindow):
         dtypes = GDF.dtypes.to_list()
         
         for i in range(len(dtypes)):
-            if dtypes[i]=='Timestamp' or dtypes[i]=='<M8[ns]' or dtypes[i]=='datetime64':
+            if dtypes[i]=='Timestamp' or dtypes[i]=='<M8[ns]' \
+                    or dtypes[i]=='datetime64':
                 GDF[fields[i]] = GDF[fields[i]].astype(str, errors='ignore')
         
         yx = [GDF.geometry.y[0], GDF.geometry.x[0]]
@@ -54,8 +55,12 @@ class MapWindow(QMainWindow):
                             control_scale = True, zoomControl=True, 
                             tiles='openstreetmap', attributionControl=True)
         
-        folium.raster_layers.WmsTileLayer('https://www.google.cn/maps/vt?lyrs=s@189&gl=cn&x={x}&y={y}&z={z}',
-                                          'Google Satellite', name='Google Satellite', overlay=False).add_to(webmap)
+        folium.raster_layers.WmsTileLayer(
+            'https://www.google.cn/maps/vt?lyrs=s@189&gl=cn&x={x}&y={y}&z={z}',
+            'Google Satellite',
+            name='Google Satellite',
+            overlay=False
+        ).add_to(webmap)
         
         f = fields[0:-1] if len(fields)<=11 else fields[0:11]
         
@@ -74,12 +79,17 @@ class MapWindow(QMainWindow):
         ).add_to(webmap)
         
         folium.map.LayerControl().add_to(webmap)
-        MeasureControl(position='topright', 
-                                       primary_length_unit='meters', 
-                                       secondary_length_unit='kilometers', 
-                                       primary_area_unit='sqmeters', 
-                                       secondary_area_unit='hectares').add_to(webmap)
+
+        MeasureControl(
+            position='topright',
+            primary_length_unit='meters',
+            secondary_length_unit='kilometers',
+            primary_area_unit='sqmeters',
+            secondary_area_unit='hectares'
+        ).add_to(webmap)
+
         Geocoder(position='topright', collapsed=True).add_to(webmap)
+
         MousePosition(position='bottomright', separator=' / ').add_to(webmap)
         
         return webmap

@@ -1,1 +1,0 @@
-pyinstaller "C:\Users\gabri\OneDrive\LabMap\table2spatial\table2spatial-rep\table2spatial.py" --distpath="C:\Users\gabri\OneDrive\LabMap\table2spatial" --upx-dir="C:\Users\gabri\OneDrive\LabMap\lib\upx-3.96-win64" --clean --onefile --collect-data=geopandas --noconsole --icon="C:\Users\gabri\OneDrive\LabMap\table2spatial\table2spatial-rep\icons\windowIcon.ico"

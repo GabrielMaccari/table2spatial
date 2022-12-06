@@ -168,3 +168,9 @@ cython_debug/
 *README.html
 *README_cache/
 #*README_files/
+.idea/vcs.xml
+.idea/table2spatial-rep.iml
+.idea/modules.xml
+.idea/misc.xml
+.idea/inspectionProfiles/profiles_settings.xml
+table2spatial v1-4.exe
