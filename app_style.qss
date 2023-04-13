@@ -1,0 +1,39 @@
+QMainWindow {
+    background-color: #F3F3F3;
+    padding: 0px;
+}
+QToolButton {
+    qproperty-iconSize: 32px 32px;
+    border: none;
+    background-color: none;
+    border-radius: 3px;
+}
+QToolButton:hover {
+    background-color: #EAEAEA;
+}
+QListWidget {
+    background-color: #FBFBFB;
+    border: none;
+    border-radius: 3px;
+}
+QMessageBox {
+    background-color: #F3F3F3;
+}
+QComboBox {
+    font-family: Calibri;
+    font-size: 10.5pt;
+}
+QLabel {
+    font-family: Calibri;
+    font-size: 10.5pt;
+}
+QMenu {
+    font-family: Calibri;
+    font-size: 10pt;
+    background-color: #F9F9F9;
+    border: none;
+}
+QMenu::item:selected {
+    background-color: #EEEEEE;
+    color: black;
+}
