@@ -173,4 +173,10 @@ cython_debug/
 .idea/modules.xml
 .idea/misc.xml
 .idea/inspectionProfiles/profiles_settings.xml
-table2spatial v1-4.exe
+
+.idea/
+/*.gpkg
+/*.shp
+/*.geojson
+/*.db
+/pyinstaller command.txt

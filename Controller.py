@@ -4,7 +4,7 @@ import geopandas
 from csv import Sniffer
 from collections import Counter
 from os import getcwd
-from shapely.geometry import Point
+from PyQt6.QtGui import QIcon
 
 from View import (show_popup, show_file_dialog, show_selection_dialog,
                   show_input_dialog)
@@ -96,11 +96,6 @@ class MainController:
         return False
 
     def merge_sheets(self):
-        # TODO corrigir esse problema \/
-        """Quando o usuário mescla abas e uma das abas (exceto a primeira)
-        possui pontos que não estão presentes na primeira, esses pontos acabam
-        entrando no DF (sem coordenadas, e aí as colunas de coordenadas não são
-        detectadas)"""
 
         # Filtra as colunas que aparecem em todas as abas
         sheet_names = self.model.excel_file.sheet_names
@@ -235,16 +230,17 @@ class MainController:
         )
         return crs_list
 
+    def get_crs_icons(self, crs_list):
+        icon_list = []
+        for crs in crs_list:
+            if "GEOGRAPHIC" in str(crs_dict[crs]["type"]):
+                icon_list.append(QIcon("icons/latlon.png"))
+            else:
+                icon_list.append(QIcon("icons/projected.png"))
+        return icon_list
+
     def get_coordinate_columns(self, crs_key):
-        """
-        Finds which columns in a pandas DataFrame contain only valid coordinates.
 
-        Parameters:
-            crs_key (str): The coordinate reference system of the DataFrame.
-
-        Returns:
-            Two lists of column names: one for valid X coordinate columns and one for valid Y coordinate columns.
-        """
         df = self.model.df
 
         crs_auth = crs_dict[crs_key]["auth_name"]

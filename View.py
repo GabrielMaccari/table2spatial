@@ -8,6 +8,7 @@ import folium
 
 from Model import dtype_dict, crs_dict
 
+
 class ListRow(QWidget):
 
     def __init__(self, column_name, column_dtype):
@@ -75,7 +76,7 @@ class AppMainWindow(QMainWindow):
         self.merge_btn = QToolButton(self)
         self.merge_btn.setToolTip("Mesclar abas do arquivo usando um campo "
                                   "em comum")
-        self.merge_btn.setIcon(QIcon("icons/join.png"))
+        self.merge_btn.setIcon(QIcon("icons/merge.png"))
         self.merge_btn.setMinimumSize(40, 40)
         self.merge_btn.setMaximumSize(40, 40)
         self.merge_btn.clicked.connect(self.merge_btn_clicked)
@@ -155,7 +156,6 @@ class AppMainWindow(QMainWindow):
             show_popup(message, "error")
 
     def update_list(self):
-        # TODO Existe um bug em que uma coluna não aparece na lista após ser convertida para timedelta
         try:
             # Limpa o conteúdo atual da lista
             self.df_columns_lsw.clear()
@@ -298,7 +298,11 @@ class CRSSettingsWindow(QMainWindow):
         self.coord_fields_lbl = QLabel("Campos de coordenadas")
         self.coord_fields_lbl.setStyleSheet("font-size: 11pt;")
 
-        self.y_lbl = QLabel("N/Lat")
+        self.y_icn = QLabel()
+        self.y_icn.setPixmap(QPixmap("icons/lat.png").scaled(
+            22, 22, transformMode=Qt.TransformationMode.SmoothTransformation)
+        )
+        self.y_lbl = QLabel("Latitude/Northing")
         self.y_cbx = QComboBox()
         self.y_cbx.setToolTip("A coluna da tabela que contém a coordenada Y "
                               "(Northing/Latitude). \nApenas colunas contendo "
@@ -306,7 +310,11 @@ class CRSSettingsWindow(QMainWindow):
                               "para o SRC aparecerão aqui.")
         self.y_cbx.currentTextChanged.connect(self.yx_column_changed)
 
-        self.x_lbl = QLabel("E/Lon")
+        self.x_icn = QLabel()
+        self.x_icn.setPixmap(QPixmap("icons/lon.png").scaled(
+            22, 22, transformMode=Qt.TransformationMode.SmoothTransformation)
+        )
+        self.x_lbl = QLabel("Longitude/Easting")
         self.x_cbx = QComboBox()
         self.x_cbx.setToolTip("A coluna da tabela que contém a coordenada X "
                               "(Easting/Longitude). \nApenas colunas contendo "
@@ -333,10 +341,12 @@ class CRSSettingsWindow(QMainWindow):
         layout.addWidget(self.crs_lbl, 0, 0, 1, 11)
         layout.addWidget(self.crs_cbx, 1, 0, 1, 11)
         layout.addWidget(self.coord_fields_lbl, 2, 0, 1, 11)
-        layout.addWidget(self.y_lbl, 3, 0, 1, 1)
-        layout.addWidget(self.y_cbx, 3, 1, 1, 10)
-        layout.addWidget(self.x_lbl, 4, 0, 1, 1)
-        layout.addWidget(self.x_cbx, 4, 1, 1, 10)
+        layout.addWidget(self.y_icn, 3, 0, 1, 1)
+        layout.addWidget(self.y_lbl, 3, 1, 1, 4)
+        layout.addWidget(self.y_cbx, 3, 4, 1, 7)
+        layout.addWidget(self.x_icn, 4, 0, 1, 1)
+        layout.addWidget(self.x_lbl, 4, 1, 1, 4)
+        layout.addWidget(self.x_cbx, 4, 4, 1, 7)
         layout.addWidget(self.cancel_btn, 5, 9, 1, 1)
         layout.addWidget(self.ok_btn, 5, 10, 1, 1)
 
@@ -353,6 +363,12 @@ class CRSSettingsWindow(QMainWindow):
         crs_list = self.controller.get_crs_list()
         self.crs_cbx.clear()
         self.crs_cbx.addItems(crs_list)
+        """
+        self.crs_cbx.setIconSize(QSize(20, 20))
+        icon_list = self.controller.get_crs_icons(crs_list)
+        for i, crs in enumerate(icon_list):
+            self.crs_cbx.setItemIcon(i, icon)
+        """
         if self.model.crs is not None:
             self.crs_cbx.setCurrentText(self.model.crs)
         else:
