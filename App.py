@@ -21,7 +21,7 @@ class App(QApplication):
 if __name__ == '__main__':
     app = App(sys.argv)
 
-    with open('app_style.qss', 'r') as f:
+    with open('style\\app_style.qss', 'r') as f:
         style = f.read()
     app.setStyleSheet(style)
 
