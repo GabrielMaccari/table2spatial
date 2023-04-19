@@ -1,4 +1,5 @@
 import pyproj
+import numpy
 import pandas
 import geopandas
 from csv import Sniffer
@@ -279,6 +280,82 @@ class MainController:
                     print(f"{error}")
 
         return valid_x_columns, valid_y_columns
+
+    def select_coord_column(self, axis, options):
+        if axis == "y":
+            common_names = ["latitude", "lat", "northing", "utm_n", "utmn", "n",
+                            "y", "utmn (m)"]
+        elif axis == "x":
+            common_names = ["longitude", "lon", "easting", "utm_e", "utme", "e",
+                            "x", "utme (m)"]
+        else:
+            raise Exception('Expected "y" or "x" for axis')
+
+        for col in options:
+            if str(col).lower() in common_names:
+                return col
+
+        return None
+
+    def reproject(self, output_crs_key):
+        y_column, x_column = self.model.y_column, self.model.x_column
+        input_auth = crs_dict[self.model.crs]["auth_name"]
+        input_code = crs_dict[self.model.crs]["code"]
+        output_auth = crs_dict[output_crs_key]["auth_name"]
+        output_code = crs_dict[output_crs_key]["code"]
+
+        input_type = (
+            "utm"
+            if str(crs_dict[self.model.crs]["type"]) == "PJType.PROJECTED_CRS"
+            else "latlon"
+        )
+        output_type = (
+            "utm"
+            if str(crs_dict[output_crs_key]["type"]) == "PJType.PROJECTED_CRS"
+            else "latlon"
+        )
+
+        input_crs = pyproj.CRS.from_authority(input_auth, input_code)
+        output_crs = pyproj.CRS.from_authority(output_auth, output_code)
+
+        transformer = pyproj.Transformer.from_crs(input_crs, output_crs)
+
+        input_y, input_x = self.model.df[y_column], self.model.df[x_column]
+        output_y, output_x = [], []
+
+        for old_y, old_x in zip(input_y, input_x):
+            try:
+                if input_type == "latlon" and output_type == "utm":
+                    new_x, new_y = transformer.transform(old_y, old_x)
+                elif input_type == "latlon" and output_type == "latlon":
+                    new_y, new_x = transformer.transform(old_y, old_x)
+                elif input_type == "utm" and output_type == "latlon":
+                    new_y, new_x = transformer.transform(old_x, old_y)
+                elif input_type == "utm" and output_type == "utm":
+                    new_x, new_y = transformer.transform(old_x, old_y)
+
+                if new_x == numpy.inf or new_y == numpy.inf:
+                    raise TypeError("Invalid coordinate")
+
+                output_y.append(new_y)
+                output_x.append(new_x)
+
+            except TypeError:
+                output_y.append(pandas.NA)
+                output_x.append(pandas.NA)
+
+        self.model.df[y_column] = output_y
+        self.model.df[x_column] = output_x
+
+        new_y_column = "Latitude" if output_type == "latlon" else "Northing"
+        new_x_column = "Longitude" if output_type == "latlon" else "Easting"
+
+        self.model.df.rename(columns={y_column: new_y_column,
+                                      x_column: new_x_column}, inplace=True)
+
+        self.model.crs = output_crs_key
+        self.model.y_column = new_y_column
+        self.model.x_column = new_x_column
 
     def build_gdf(self):
 

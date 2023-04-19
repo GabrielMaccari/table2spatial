@@ -9,39 +9,6 @@ import folium
 from Model import dtype_dict, crs_dict
 
 
-class ListRow(QWidget):
-
-    def __init__(self, column_name, column_dtype):
-
-        super().__init__()
-
-        self.field = column_name
-        self.dtype = column_dtype
-
-        self.column_lbl = QLabel(self)
-        self.column_lbl.setText(self.field)
-        self.column_lbl.setGeometry(5, 0, 260, 30)
-
-        self.dtype_cbx = QComboBox(self)
-        self.dtype_cbx.setGeometry(273, 4, 90, 22)
-
-        self.dtype_cbx.addItems(dtype_dict.keys())
-        key = self.get_dtype_key()
-        self.dtype_cbx.setCurrentText(key)
-
-    def get_icon(self):
-        dt_values = dtype_dict.values()
-        img = next(subdict["icon"] for subdict in dt_values
-                   if subdict["pandas_type"] == self.dtype)
-        return QIcon(img)
-
-    def get_dtype_key(self):
-        dt_items = dtype_dict.items()
-        key = next(key for key, subdict in dt_items
-                   if subdict["pandas_type"] == self.dtype)
-        return key
-
-
 class AppMainWindow(QMainWindow):
 
     def __init__(self, model, controller):
@@ -53,13 +20,9 @@ class AppMainWindow(QMainWindow):
 
         self.file_open = False
 
-        self.icon_dict = {
-
-        }
-
         self.setWindowTitle('table2spatial')
         self.setWindowIcon(QIcon('icons/globe.png'))
-        self.setMaximumSize(425, 560)
+        self.setMaximumSize(425, 550)
 
         layout = QGridLayout()
         layout.setSpacing(5)
@@ -82,14 +45,6 @@ class AppMainWindow(QMainWindow):
         self.merge_btn.clicked.connect(self.merge_btn_clicked)
         self.merge_btn.setEnabled(False)
 
-        self.save_table_btn = QToolButton(self)
-        self.save_table_btn.setToolTip("Exportar como CSV")
-        self.save_table_btn.setIcon(QIcon("icons/export.png"))
-        self.save_table_btn.setMinimumSize(40, 40)
-        self.save_table_btn.setMaximumSize(40, 40)
-        self.save_table_btn.clicked.connect(self.save_table_btn_clicked)
-        self.save_table_btn.setEnabled(False)
-
         self.crs_settings_btn = QToolButton(self)
         self.crs_settings_btn.setToolTip("Configurar SRC e campos de "
                                          "coordenadas")
@@ -99,13 +54,29 @@ class AppMainWindow(QMainWindow):
         self.crs_settings_btn.clicked.connect(self.crs_settings_btn_clicked)
         self.crs_settings_btn.setEnabled(False)
 
-        self.export_btn = QToolButton(self)
-        self.export_btn.setToolTip("Exportar como arquivo vetorial de pontos")
-        self.export_btn.setIcon(QIcon("icons/points.png"))
-        self.export_btn.setMinimumSize(40, 40)
-        self.export_btn.setMaximumSize(40, 40)
-        self.export_btn.clicked.connect(self.export_btn_clicked)
-        self.export_btn.setEnabled(False)
+        self.reproject_btn = QToolButton(self)
+        self.reproject_btn.setToolTip("Reprojetar coordenadas para outro SRC")
+        self.reproject_btn.setIcon(QIcon("icons/reproject.png"))
+        self.reproject_btn.setMaximumSize(40, 40)
+        self.reproject_btn.setMaximumSize(40, 40)
+        self.reproject_btn.clicked.connect(self.reproject_btn_clicked)
+        self.reproject_btn.setEnabled(False)
+
+        self.save_table_btn = QToolButton(self)
+        self.save_table_btn.setToolTip("Exportar como CSV")
+        self.save_table_btn.setIcon(QIcon("icons/table.png"))
+        self.save_table_btn.setMinimumSize(40, 40)
+        self.save_table_btn.setMaximumSize(40, 40)
+        self.save_table_btn.clicked.connect(self.save_table_btn_clicked)
+        self.save_table_btn.setEnabled(False)
+
+        self.save_layer_btn = QToolButton(self)
+        self.save_layer_btn.setToolTip("Exportar como camada vetorial de pontos")
+        self.save_layer_btn.setIcon(QIcon("icons/layers.png"))
+        self.save_layer_btn.setMinimumSize(40, 40)
+        self.save_layer_btn.setMaximumSize(40, 40)
+        self.save_layer_btn.clicked.connect(self.save_layer_btn_clicked)
+        self.save_layer_btn.setEnabled(False)
 
         self.map_preview_btn = QToolButton(self)
         self.map_preview_btn.setToolTip("Visualizar uma prévia dos dados em "
@@ -127,13 +98,15 @@ class AppMainWindow(QMainWindow):
 
         copyright_lbl = QLabel("©2023 Gabriel Maccari / "
                                "Icons by www.icons8.com")
+        copyright_lbl.setStyleSheet("font-size: 8pt")
 
         layout.addWidget(self.open_file_btn, 0, 0, 1, 1)
         layout.addWidget(self.merge_btn, 0, 1, 1, 1)
-        layout.addWidget(self.save_table_btn, 0, 2, 1, 1)
-        layout.addWidget(self.crs_settings_btn, 0, 3, 1, 1)
-        layout.addWidget(self.export_btn, 0, 4, 1, 1)
-        layout.addWidget(self.map_preview_btn, 0, 5, 1, 1)
+        layout.addWidget(self.crs_settings_btn, 0, 2, 1, 1)
+        layout.addWidget(self.reproject_btn, 0, 3, 1, 1)
+        layout.addWidget(self.save_table_btn, 0, 4, 1, 1)
+        layout.addWidget(self.save_layer_btn, 0, 5, 1, 1)
+        layout.addWidget(self.map_preview_btn, 0, 6, 1, 1)
         layout.addWidget(self.df_columns_lsw, 1, 0, 20, 8)
         layout.addWidget(copyright_lbl, 22, 0, 1, 8)
 
@@ -147,9 +120,12 @@ class AppMainWindow(QMainWindow):
             if new_file_opened:
                 self.update_list()
                 self.file_open = True
-            self.merge_btn.setEnabled(self.model.multiple_sheets)
-            self.save_table_btn.setEnabled(self.file_open)
-            self.crs_settings_btn.setEnabled(self.file_open)
+                self.merge_btn.setEnabled(self.model.multiple_sheets)
+                self.save_table_btn.setEnabled(self.file_open)
+                self.crs_settings_btn.setEnabled(self.file_open)
+                self.reproject_btn.setEnabled(False)
+                self.save_layer_btn.setEnabled(False)
+                self.map_preview_btn.setEnabled(False)
         except Exception as exception:
             message = (f"Não foi possível abrir o arquivo.\n\n"
                        f"Motivo: {exception}")
@@ -227,14 +203,6 @@ class AppMainWindow(QMainWindow):
             self.dtypes_list[row] = target_dtype
         self.update_list()
 
-    def save_table_btn_clicked(self):
-        try:
-            self.controller.save_csv()
-        except Exception as exception:
-            message = (f"Não foi possível salvar o arquivo CSV."
-                       f"\n\nMotivo: {exception}")
-            show_popup(message, "error")
-
     def crs_settings_btn_clicked(self):
         try:
             QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
@@ -246,7 +214,26 @@ class AppMainWindow(QMainWindow):
             show_popup(message, "error")
         QApplication.restoreOverrideCursor()
 
-    def export_btn_clicked(self):
+    def reproject_btn_clicked(self):
+        try:
+            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            reproject_window = ReprojectWindow(self, self.model, self.controller)
+            reproject_window.show()
+        except Exception as exception:
+            message = (f"Não foi possível abrir a janela de reprojeção"
+                       f"\n\nMotivo: {exception}")
+            show_popup(message, "error")
+        QApplication.restoreOverrideCursor()
+
+    def save_table_btn_clicked(self):
+        try:
+            self.controller.save_csv()
+        except Exception as exception:
+            message = (f"Não foi possível salvar o arquivo CSV."
+                       f"\n\nMotivo: {exception}")
+            show_popup(message, "error")
+
+    def save_layer_btn_clicked(self):
         try:
             self.controller.build_gdf()
             saved = self.controller.save_points()
@@ -271,6 +258,39 @@ class AppMainWindow(QMainWindow):
                        f"\n\nMotivo: {exception}")
             show_popup(message, "error")
         QApplication.restoreOverrideCursor()
+
+
+class ListRow(QWidget):
+
+    def __init__(self, column_name, column_dtype):
+
+        super().__init__()
+
+        self.field = column_name
+        self.dtype = column_dtype
+
+        self.column_lbl = QLabel(self)
+        self.column_lbl.setText(self.field)
+        self.column_lbl.setGeometry(5, 0, 260, 30)
+
+        self.dtype_cbx = QComboBox(self)
+        self.dtype_cbx.setGeometry(273, 4, 90, 22)
+
+        self.dtype_cbx.addItems(dtype_dict.keys())
+        key = self.get_dtype_key()
+        self.dtype_cbx.setCurrentText(key)
+
+    def get_icon(self):
+        dt_values = dtype_dict.values()
+        img = next(subdict["icon"] for subdict in dt_values
+                   if subdict["pandas_type"] == self.dtype)
+        return QIcon(img)
+
+    def get_dtype_key(self):
+        dt_items = dtype_dict.items()
+        key = next(key for key, subdict in dt_items
+                   if subdict["pandas_type"] == self.dtype)
+        return key
 
 
 class CRSSettingsWindow(QMainWindow):
@@ -383,19 +403,31 @@ class CRSSettingsWindow(QMainWindow):
         self.fill_column_boxes()
 
     def fill_column_boxes(self):
-        crs_key = self.crs_cbx.currentText()
-        y_columns, x_columns = self.controller.get_coordinate_columns(crs_key)
-        self.y_cbx.clear()
-        self.y_cbx.addItems(y_columns)
-        self.x_cbx.clear()
-        self.x_cbx.addItems(x_columns)
-        if (self.model.crs == crs_key
-                and self.model.y_column in y_columns
-                and self.model.x_column in x_columns
-                and self.model.y_column is not None
-                and self.model.x_column is not None):
-            self.y_cbx.setCurrentText(self.model.y_column)
-            self.x_cbx.setCurrentText(self.model.x_column)
+        try:
+            crs_key = self.crs_cbx.currentText()
+            y_columns, x_columns = self.controller.get_coordinate_columns(crs_key)
+            self.y_cbx.clear()
+            self.y_cbx.addItems(y_columns)
+            self.x_cbx.clear()
+            self.x_cbx.addItems(x_columns)
+            if (self.model.crs == crs_key
+                    and self.model.y_column in y_columns
+                    and self.model.x_column in x_columns
+                    and self.model.y_column is not None
+                    and self.model.x_column is not None):
+                self.y_cbx.setCurrentText(self.model.y_column)
+                self.x_cbx.setCurrentText(self.model.x_column)
+            else:
+                y_col = self.controller.select_coord_column("y", y_columns)
+                x_col = self.controller.select_coord_column("x", x_columns)
+                if y_col:
+                    self.y_cbx.setCurrentText(y_col)
+                if x_col:
+                    self.x_cbx.setCurrentText(x_col)
+        except Exception as exception:
+            message = (f"Não foi possível encontrar a lista de colunas de "
+                       f"coordenadas.\n\nMotivo: {exception}")
+            show_popup(message, "error")
 
     def yx_column_changed(self):
         if self.y_cbx.currentText() == "" or self.x_cbx.currentText() == "":
@@ -413,12 +445,95 @@ class CRSSettingsWindow(QMainWindow):
             self.model.y_column = y
             self.model.x_column = x
 
-            self.parent.export_btn.setEnabled(True)
+            self.parent.reproject_btn.setEnabled(True)
+            self.parent.save_layer_btn.setEnabled(True)
 
             self.close()
         except Exception as exception:
             message = (f"Não foi possível configurar o sistema de referência de"
                        f" coordenadas.\n\nMotivo: {exception}")
+            show_popup(message, "error")
+
+
+class ReprojectWindow(QMainWindow):
+    def __init__(self, parent, model, controller):
+        super(ReprojectWindow, self).__init__(parent)
+        self.parent = parent
+        self.model = model
+        self.controller = controller
+
+        self.setWindowTitle('Reprojetar coordenadas')
+        self.setWindowIcon(QIcon('icons/globe.png'))
+        self.setMinimumWidth(400)
+
+        layout = QGridLayout()
+        layout.setVerticalSpacing(6)
+        layout.setHorizontalSpacing(3)
+
+        self.input_crs_lbl = QLabel("SRC de entrada:")
+
+        self.input_crs_edt = QLineEdit(self.model.crs)
+        #self.input_crs_edt.setReadOnly(True)
+        self.input_crs_edt.setEnabled(False)
+        self.input_crs_edt.setMinimumHeight(25)
+        self.input_crs_edt.setMaximumHeight(25)
+
+        self.output_crs_lbl = QLabel("SRC de saída:")
+
+        self.output_crs_cbx = QComboBox()
+        self.output_crs_cbx.setMinimumHeight(23)
+        self.output_crs_cbx.setMaximumHeight(23)
+        self.output_crs_cbx.currentTextChanged.connect(self.output_crs_changed)
+
+        self.cancel_btn = QToolButton()
+        self.cancel_btn.setIcon(QIcon("icons/cancel.png"))
+        self.cancel_btn.setToolTip("Descartar alterações e fechar")
+        self.cancel_btn.setStyleSheet("qproperty-iconSize: 22px 22px;")
+        self.cancel_btn.setMinimumSize(30, 30)
+        self.cancel_btn.setMaximumSize(30, 30)
+        self.cancel_btn.clicked.connect(self.close)
+
+        self.ok_btn = QToolButton()
+        self.ok_btn.setIcon(QIcon("icons/ok.png"))
+        self.ok_btn.setToolTip("Salvar e fechar")
+        self.ok_btn.setStyleSheet("qproperty-iconSize: 22px 22px;")
+        self.ok_btn.setMinimumSize(30, 30)
+        self.ok_btn.setMaximumSize(30, 30)
+        self.ok_btn.clicked.connect(self.ok_btn_clicked)
+
+        layout.addWidget(self.input_crs_lbl, 0, 0, 1, 10)
+        layout.addWidget(self.input_crs_edt, 1, 0, 1, 10)
+        layout.addWidget(self.output_crs_lbl, 2, 0, 1, 10)
+        layout.addWidget(self.output_crs_cbx, 3, 0, 1, 10)
+        layout.addWidget(self.cancel_btn, 4, 8, 1, 1)
+        layout.addWidget(self.ok_btn, 4, 9, 1, 1)
+
+        widget = QWidget(self)
+        widget.setLayout(layout)
+        self.setCentralWidget(widget)
+
+        self.fill_crs_list()
+
+    def fill_crs_list(self):
+        crs_list = self.controller.get_crs_list()
+        self.output_crs_cbx.clear()
+        self.output_crs_cbx.addItems(crs_list)
+        self.output_crs_cbx.setCurrentText("SIRGAS 2000 (EPSG:4674)")
+
+    def output_crs_changed(self):
+        input_crs = self.input_crs_edt.text()
+        output_crs = self.output_crs_cbx.currentText()
+        self.ok_btn.setEnabled(False if output_crs == input_crs else True)
+
+    def ok_btn_clicked(self):
+        try:
+            output_crs = self.output_crs_cbx.currentText()
+            self.controller.reproject(output_crs)
+            show_popup("Coordenadas reprojetadas com sucesso!")
+            self.parent.update_list()
+            self.close()
+        except Exception as exception:
+            message = f"Não foi possível reprojetar.\n\nMotivo: {exception}"
             show_popup(message, "error")
 
 

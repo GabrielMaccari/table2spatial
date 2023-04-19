@@ -59,5 +59,6 @@ class GeographicTable():
         self.df = None
 
         self.crs = None
-        self.coordinate_columns = [None, None]
+        self.y_column = None
+        self.x_column = None
         self.gdf = None
