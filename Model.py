@@ -29,7 +29,7 @@ dtype_dict = {
         "icon": "icons/datetime.png",
     },
     "Timedelta": {
-        "pandas_type": "timedelta[ns]",
+        "pandas_type": "timedelta64[ns]",
         "icon": "icons/timedelta.png",
     },
     "Category": {

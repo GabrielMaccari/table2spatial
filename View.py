@@ -275,7 +275,6 @@ class ListRow(QWidget):
 
         self.dtype_cbx = QComboBox(self)
         self.dtype_cbx.setGeometry(273, 4, 90, 22)
-
         self.dtype_cbx.addItems(dtype_dict.keys())
         key = self.get_dtype_key()
         self.dtype_cbx.setCurrentText(key)
@@ -645,8 +644,10 @@ def show_file_dialog(caption, extension_filter, mode="open"):
     return file_name, file_type
 
 
-def show_selection_dialog(message, options, title="Selecionar opções"):
-    choice, ok = QInputDialog.getItem(None, title, message, options, editable=False)
+def show_selection_dialog(message: str, items: list, selected=0,
+                          title="Selecionar opções"):
+    choice, ok = QInputDialog.getItem(None, title, message, items, selected,
+                                      editable=False)
     return choice, ok
 
 

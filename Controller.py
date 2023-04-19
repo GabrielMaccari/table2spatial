@@ -175,7 +175,7 @@ class MainController:
             self.model.df[column] = pandas.to_datetime(self.model.df[column])
 
         # Conversão para timedelta
-        elif target_dtype == "timedelta[ns]":
+        elif target_dtype == "timedelta64[ns]":
             # Opções de unidade
             unit_options = ["days", "hours", "minutes", "seconds",
                             "miliseconds", "microseconds", "nanoseconds"]
@@ -195,6 +195,8 @@ class MainController:
             # Obtém uma lista de valores únicos da coluna
             column_data = self.model.df[column].astype(str)
             bool_options = column_data.unique()
+            selected_true_value = self.select_bool_option(bool_options, True)
+            selected_false_value = self.select_bool_option(bool_options, False)
             if len(bool_options) != 2:
                 raise Exception(f"A coluna em questão contém mais de dois "
                                 f"valores únicos (para verdadeiro/falso) ou "
@@ -203,12 +205,12 @@ class MainController:
             # Caixa para selecionar o valor True
             true_key, ok1 = show_selection_dialog(
                 "Selecione o valor verdadeiro:",
-                bool_options
+                bool_options, selected=selected_true_value
             )
             # Caixa para selecionar o valor False
             false_key, ok2 = show_selection_dialog(
                 "Selecione o valor falso:",
-                bool_options
+                bool_options, selected=selected_false_value
             )
             # Se o usuário der ok nas caixas, faz a conversão
             if ok1 and ok2:
@@ -218,6 +220,18 @@ class MainController:
         else:
             self.model.df[column] = self.model.df[column].astype(target_dtype)
         return True
+
+    def select_bool_option(self, options, true_or_false: bool):
+        if true_or_false is True:
+            common_values = ["true", "sim", "verdadeiro", "v", "yes", "y", "1"]
+        else:
+            common_values = ["false", "não", "nao", "falso", "f", "no", "0"]
+
+        for i, value in enumerate(options):
+            if str(value).lower() in common_values:
+                return i
+
+        return 0
 
     def save_csv(self):
         self.model.df.to_csv("dataframe.csv", sep=";", decimal=",",
@@ -333,6 +347,8 @@ class MainController:
                     new_y, new_x = transformer.transform(old_x, old_y)
                 elif input_type == "utm" and output_type == "utm":
                     new_x, new_y = transformer.transform(old_x, old_y)
+                else:
+                    raise Exception("Can't handle input/output type combination")
 
                 if new_x == numpy.inf or new_y == numpy.inf:
                     raise TypeError("Invalid coordinate")
@@ -375,19 +391,19 @@ class MainController:
 
     def save_points(self):
 
-        gdf = self.model.gdf
-
         # Show the file dialog to choose the file name and type
         file_name, file_type = show_file_dialog(
             caption='Salvar GeoDataFrame',
             extension_filter=('GeoPackage (*.gpkg);;'
                               'ESRI Shapefile (*.shp);;'
-                              'GeoJSON (*.geojson);;'
-                              'SQLite Database (*.db)'),
+                              'GeoJSON (*.geojson)'),
             mode="save"
         )
         if file_name == "":
             return False
+
+        self.adapt_column_dtypes(file_name)
+        gdf = self.model.gdf
 
         # Save the GeoDataFrame to the selected file
         if file_name.endswith(".gpkg"):
@@ -400,24 +416,28 @@ class MainController:
             gdf.to_file(file_name, layer=layer_name, driver='GPKG')
 
         elif file_name.endswith(".shp"):
-            adapted_columns = []
-            for column, dtype in zip(gdf.columns, gdf.dtypes):
-                bad_shp_types = ["datetime64", "datetime64[ns]", "<M8[ns]",
-                                 "<M8", "timestamp", "category", "timedelta",
-                                 "timedelta[64]"]
-                if dtype in bad_shp_types:
-                    gdf[column] = gdf[column].astype(str)
-                    adapted_columns.append(column)
             gdf.to_file(file_name, driver='ESRI Shapefile')
-            show_popup(f"As seguintes colunas tinham tipos de dado não "
-                       f"suportados pelo formato shapefile e, portanto, foram "
-                       f"convertidas para string durante a exportação:"
-                       f"\n\n{', '.join(adapted_columns)}")
 
         elif file_name.endswith(".geojson"):
             gdf.to_file(file_name, driver='GeoJSON')
 
-        elif file_name.endswith(".db"):
-            gdf.to_file(file_name, driver="SQLite")
-
         return True
+
+    def adapt_column_dtypes(self, file_name):
+        gdf = self.model.gdf
+        if file_name.endswith(".shp"):
+            bad_types = ["datetime64[ns]", "<M8[ns]", "category", "timedelta64[ns]"]
+        else:
+            bad_types = ["<M8[ns]", "category", "timedelta64[ns]"]
+
+        adapted_columns = []
+        for column, dtype in zip(gdf.columns, gdf.dtypes):
+            if dtype in bad_types:
+                gdf[column] = gdf[column].astype(str)
+                adapted_columns.append(column)
+
+        if adapted_columns:
+            show_popup(f"As seguintes colunas tinham tipos de dado não "
+                       f"suportados pelo formato escolhido e, portanto, "
+                       f"foram convertidas para string durante a "
+                       f"exportação:\n\n{', '.join(adapted_columns)}")

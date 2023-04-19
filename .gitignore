@@ -181,3 +181,5 @@ cython_debug/
 /*.db
 /pyinstaller command.txt
 .idea
+
+dataframe.csv
