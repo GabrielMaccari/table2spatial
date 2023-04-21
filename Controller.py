@@ -8,7 +8,7 @@ from os import getcwd
 from PyQt6.QtGui import QIcon
 
 from View import (show_popup, show_file_dialog, show_selection_dialog,
-                  show_input_dialog)
+                  show_input_dialog, show_wait_cursor)
 from Model import crs_dict
 
 
@@ -102,8 +102,8 @@ class MainController:
         sheet_names = self.model.excel_file.sheet_names
         columns_list = []
         for sheet_name in sheet_names:
-            df = self.model.excel_file.parse(sheet_name=sheet_name)
-            columns_list = columns_list + df.columns.to_list()
+            sheet = self.model.excel_file.parse(sheet_name=sheet_name)
+            columns_list = columns_list + sheet.columns.to_list()
         count = Counter(columns_list)
         merge_column_options = [k for k, v in count.items() if v > 1]
 
@@ -115,6 +115,8 @@ class MainController:
         )
         if not ok:
             return
+
+        show_wait_cursor()
 
         number_of_sheets = len(self.model.excel_file.sheet_names)
 
@@ -128,9 +130,11 @@ class MainController:
 
         # Avisa o usuário caso alguma aba não possua a coluna de mescla
         if sheets_to_ignore:
+            show_wait_cursor(False)
             show_popup(f"As seguintes abas não possuem a coluna {merge_column} "
                        f"e, portanto, não serão adicionadas ao DataFrame:\n"
                        f"{', '.join(sheets_to_ignore)}")
+            show_wait_cursor()
 
         # Lê todas as abas do arquivo e armazena em uma lista. Armazena também
         # os dtypes das colunas de merge de cada aba
@@ -139,9 +143,9 @@ class MainController:
             if i in sheets_to_merge:
                 sheet = self.model.excel_file.parse(sheet_name=i)
                 # Remove colunas e linhas totalmente vazias
-                remove_cols = [col for col in df.columns
-                               if 'Unnamed' in col and len(df[col]) == 0]
-                df = df.drop(remove_cols, axis='columns')
+                remove_cols = [col for col in sheet.columns
+                               if 'Unnamed' in col and len(sheet[col]) == 0]
+                sheet = sheet.drop(remove_cols, axis='columns')
                 sheet.dropna(how='all', axis='index', inplace=True)
                 sheets.append(sheet)
                 merge_dts.append(sheet[merge_column].dtype)
@@ -165,6 +169,8 @@ class MainController:
         cols.remove(merge_column)
         columns = [merge_column] + cols
         self.model.df = df[columns]
+
+        show_wait_cursor(False)
 
     def switch_dtype(self, column, target_dtype):
 
@@ -216,7 +222,10 @@ class MainController:
             if ok1 and ok2:
                 self.model.df[column] = column_data.map({true_key: True,
                                                          false_key: False})
-        # Conversão para os demais tipos (string, float, int...)
+        elif target_dtype == "float64":
+            self.model.df[column] = self.model.df[column].replace(",", ".", regex=True)
+            self.model.df[column] = self.model.df[column].astype("float64")
+        # Conversão para os demais tipos (string, int...)
         else:
             self.model.df[column] = self.model.df[column].astype(target_dtype)
         return True

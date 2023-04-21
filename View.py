@@ -180,6 +180,7 @@ class AppMainWindow(QMainWindow):
         target_dtype = "object"
 
         try:
+            show_wait_cursor()
             # Seleciona o widget da linha
             widget = self.column_list_widgets[row]
             # Obtém o nome da coluna
@@ -202,28 +203,29 @@ class AppMainWindow(QMainWindow):
         if switched:
             self.dtypes_list[row] = target_dtype
         self.update_list()
+        show_wait_cursor(False)
 
     def crs_settings_btn_clicked(self):
         try:
-            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            show_wait_cursor()
             crs_window = CRSSettingsWindow(self, self.model, self.controller)
             crs_window.show()
         except Exception as exception:
             message = (f"Não foi possível abrir a janela de configuração do SRC"
                        f"\n\nMotivo: {exception}")
             show_popup(message, "error")
-        QApplication.restoreOverrideCursor()
+        show_wait_cursor(False)
 
     def reproject_btn_clicked(self):
         try:
-            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            show_wait_cursor()
             reproject_window = ReprojectWindow(self, self.model, self.controller)
             reproject_window.show()
         except Exception as exception:
             message = (f"Não foi possível abrir a janela de reprojeção"
                        f"\n\nMotivo: {exception}")
             show_popup(message, "error")
-        QApplication.restoreOverrideCursor()
+        show_wait_cursor(False)
 
     def save_table_btn_clicked(self):
         try:
@@ -250,14 +252,14 @@ class AppMainWindow(QMainWindow):
 
     def map_preview_btn_clicked(self):
         try:
-            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            show_wait_cursor()
             map_window = MapWindow(self, self.model.gdf)
             map_window.show()
         except Exception as exception:
             message = (f"Não foi possível gerar o mapa."
                        f"\n\nMotivo: {exception}")
             show_popup(message, "error")
-        QApplication.restoreOverrideCursor()
+        show_wait_cursor(False)
 
 
 class ListRow(QWidget):
@@ -654,3 +656,10 @@ def show_selection_dialog(message: str, items: list, selected=0,
 def show_input_dialog(message, title="", text=""):
     user_input, ok = QInputDialog.getText(None, title, message, text=text)
     return user_input, ok
+
+
+def show_wait_cursor(activate=True):
+    if activate:
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+    else:
+        QApplication.restoreOverrideCursor()
