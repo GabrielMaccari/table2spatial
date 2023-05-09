@@ -1,6 +1,9 @@
+# -*- coding: utf-8 -*-
+"""
+@author: Gabriel Maccari
+"""
 import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow
-from PyQt6.QtGui import QIcon
+from PyQt6.QtWidgets import QApplication
 
 from Model import GeographicTable
 from View import AppMainWindow
@@ -11,9 +14,8 @@ class App(QApplication):
     def __init__(self, sys_argv):
         super(App, self).__init__(sys_argv)
 
-        self.model = GeographicTable()
-        self.controller = MainController(self.model)
-        self.view = AppMainWindow(self.model, self.controller)
+        self.controller = MainController(GeographicTable)
+        self.view = AppMainWindow(self.controller)
 
         self.view.show()
 
@@ -21,7 +23,7 @@ class App(QApplication):
 if __name__ == '__main__':
     app = App(sys.argv)
 
-    with open('style\\app_style.qss', 'r') as f:
+    with open('style/app_style_light.qss', 'r') as f:
         style = f.read()
     app.setStyleSheet(style)
 

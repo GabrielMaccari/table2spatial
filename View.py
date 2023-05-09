@@ -1,21 +1,24 @@
+# -*- coding: utf-8 -*-
+"""
+@author: Gabriel Maccari
+"""
 from PyQt6.QtWidgets import *
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
-from PyQt6.QtWebEngineWidgets import QWebEngineView #pip install PyQt6-WebEngine
+from PyQt6.QtWebEngineWidgets import QWebEngineView  # pip install PyQt6-WebEngine
 from folium.plugins import MeasureControl, MousePosition, Geocoder
 from io import BytesIO
 import folium
 
-from Model import dtype_dict, crs_dict
+from Model import DTYPE_DICT, crs_dict
 
 
 class AppMainWindow(QMainWindow):
 
-    def __init__(self, model, controller):
+    def __init__(self, controller):
 
         super().__init__()
 
-        self.model = model
         self.controller = controller
 
         self.file_open = False
@@ -26,8 +29,7 @@ class AppMainWindow(QMainWindow):
 
         layout = QGridLayout()
         layout.setSpacing(5)
-        layout.setAlignment(Qt.AlignmentFlag.AlignTop |
-                            Qt.AlignmentFlag.AlignLeft)
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
 
         self.open_file_btn = QToolButton(self)
         self.open_file_btn.setToolTip("Importar tabela de pontos")
@@ -37,8 +39,7 @@ class AppMainWindow(QMainWindow):
         self.open_file_btn.clicked.connect(self.open_file_btn_clicked)
 
         self.merge_btn = QToolButton(self)
-        self.merge_btn.setToolTip("Mesclar abas do arquivo usando um campo "
-                                  "em comum")
+        self.merge_btn.setToolTip("Mesclar abas do arquivo usando um campo em comum")
         self.merge_btn.setIcon(QIcon("icons/merge.png"))
         self.merge_btn.setMinimumSize(40, 40)
         self.merge_btn.setMaximumSize(40, 40)
@@ -46,8 +47,7 @@ class AppMainWindow(QMainWindow):
         self.merge_btn.setEnabled(False)
 
         self.crs_settings_btn = QToolButton(self)
-        self.crs_settings_btn.setToolTip("Configurar SRC e campos de "
-                                         "coordenadas")
+        self.crs_settings_btn.setToolTip("Configurar SRC e campos de coordenadas")
         self.crs_settings_btn.setIcon(QIcon("icons/settings.png"))
         self.crs_settings_btn.setMinimumSize(40, 40)
         self.crs_settings_btn.setMaximumSize(40, 40)
@@ -79,9 +79,7 @@ class AppMainWindow(QMainWindow):
         self.save_layer_btn.setEnabled(False)
 
         self.map_preview_btn = QToolButton(self)
-        self.map_preview_btn.setToolTip("Visualizar uma prévia dos dados em "
-                                        "mapa\n(apenas para dataframes com até "
-                                        "100 pontos)")
+        self.map_preview_btn.setToolTip("Visualizar uma prévia dos dados em mapa")
         self.map_preview_btn.setIcon(QIcon("icons/map.png"))
         self.map_preview_btn.setMinimumSize(40, 40)
         self.map_preview_btn.setMaximumSize(40, 40)
@@ -92,12 +90,9 @@ class AppMainWindow(QMainWindow):
         self.df_columns_lsw.setMinimumSize(410, 480)
         self.df_columns_lsw.setMaximumSize(410, 480)
         self.df_columns_lsw.setIconSize(QSize(22, 22))
-        self.df_columns_lsw.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-        )
+        self.df_columns_lsw.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
-        copyright_lbl = QLabel("©2023 Gabriel Maccari / "
-                               "Icons by www.icons8.com")
+        copyright_lbl = QLabel("©2023 Gabriel Maccari / Icons by www.icons8.com")
         copyright_lbl.setStyleSheet("font-size: 8pt")
 
         layout.addWidget(self.open_file_btn, 0, 0, 1, 1)
@@ -116,149 +111,149 @@ class AppMainWindow(QMainWindow):
 
     def open_file_btn_clicked(self):
         try:
-            new_file_opened = self.controller.open_file()
-            if new_file_opened:
-                self.update_list()
-                self.file_open = True
-                self.merge_btn.setEnabled(self.model.multiple_sheets)
-                self.save_table_btn.setEnabled(self.file_open)
-                self.crs_settings_btn.setEnabled(self.file_open)
-                self.reproject_btn.setEnabled(False)
-                self.save_layer_btn.setEnabled(False)
-                self.map_preview_btn.setEnabled(False)
+            path = show_file_dialog(
+                caption="Selecione uma tabela contendo os dados de entrada.",
+                extension_filter=("Formatos suportados (*.xlsx *.xlsm *.csv *.ods);;"
+                                  "Pasta de Trabalho do Excel (*.xlsx);;"
+                                  "Pasta de Trabalho Habilitada para Macro do Excel (*.xlsm);;"
+                                  "Comma Separated Values (*.csv);; "
+                                  "OpenDocument Spreadsheet (*.ods)"),
+                mode="open", parent=self
+            )
+
+            if path == "":
+                return
+
+            new_file_opened, multiple_sheets = self.controller.open_file(path)
+
+            if not new_file_opened:
+                return
+
+            self.update_list()
+            self.merge_btn.setEnabled(multiple_sheets)
+            self.save_table_btn.setEnabled(True)
+            self.crs_settings_btn.setEnabled(True)
+            self.reproject_btn.setEnabled(False)
+            self.save_layer_btn.setEnabled(False)
+            self.map_preview_btn.setEnabled(False)
+
         except Exception as exception:
-            message = (f"Não foi possível abrir o arquivo.\n\n"
-                       f"Motivo: {exception}")
-            show_popup(message, "error")
+            show_popup(f"Não foi possível abrir o arquivo.\n\nMotivo: {exception}", "error")
 
     def update_list(self):
         try:
-            # Limpa o conteúdo atual da lista
             self.df_columns_lsw.clear()
-            #
-            columns = self.model.df.columns
-            dtypes = self.model.df.dtypes
-            #
+
+            columns = self.controller.get_df_columns()
+            dtypes = self.controller.get_df_dtypes()
+
             row = 0
             self.column_list_widgets = []
             self.dtypes_list = []
-            #
+
             for column_name, column_type in zip(columns, dtypes):
-                #
                 widget = ListRow(column_name, str(column_type))
-                #
-                widget.dtype_cbx.currentTextChanged.connect(
-                    lambda dtype_change, x=row:
-                    self.column_dtype_changed(x)
-                )
-                #
+                widget.dtype_cbx.currentTextChanged.connect(lambda dtype_change, x=row: self.column_dtype_changed(x))
+
                 self.column_list_widgets.append(widget)
                 self.dtypes_list.append(str(column_type))
-                #
+
                 item = QListWidgetItem()
                 item.setIcon(widget.get_icon())
                 item.setSizeHint(QSize(410, 30))
                 self.df_columns_lsw.addItem(item)
                 self.df_columns_lsw.setItemWidget(item, widget)
                 row += 1
+
         except Exception as exception:
-            message = (f"Não foi possível atualizar a lista com os dados do "
-                       f"arquivo.\n\nMotivo: {exception}")
-            show_popup(message, "error")
+            show_popup(f"Não foi possível atualizar a lista com os dados do arquivo.\n\nMotivo: {exception}", "error")
 
     def merge_btn_clicked(self):
         try:
             self.controller.merge_sheets()
             self.update_list()
+
         except Exception as exception:
-            message = (f"Não foi possível mesclar as abas do arquivo."
-                       f"\n\nMotivo: {exception}")
-            show_popup(message, "error")
+            show_popup(f"Não foi possível mesclar as abas do arquivo.\n\nMotivo: {exception}", "error")
 
     def column_dtype_changed(self, row):
         switched = False
         target_dtype = "object"
 
         try:
-            show_wait_cursor()
             # Seleciona o widget da linha
             widget = self.column_list_widgets[row]
             # Obtém o nome da coluna
             field = widget.column_lbl.text()
-            # Obtém o tipo de dado atual da coluna
-            current_dtype = self.dtypes_list[row]
-            current_dtype_key = next(key for key, subdict in dtype_dict.items()
-                                     if subdict["pandas_type"] == current_dtype)
             # Obtém o tipo de dado para o qual o usuário deseja converter
             target_dtype_key = widget.dtype_cbx.currentText()
-            target_dtype = dtype_dict[target_dtype_key]["pandas_type"]
+            target_dtype = DTYPE_DICT[target_dtype_key]["pandas_type"]
             # Tenta realizar a conversão
             switched = self.controller.switch_dtype(field, target_dtype)
 
         # Exibe uma popup em caso de erro
         except Exception as exception:
-            message = (f"Não foi possível converter.\n\nMotivo: {exception}")
-            show_popup(message, "error")
+            show_popup(f"Não foi possível converter.\n\nMotivo: {exception}", "error")
 
         if switched:
             self.dtypes_list[row] = target_dtype
+
         self.update_list()
-        show_wait_cursor(False)
 
     def crs_settings_btn_clicked(self):
+        show_wait_cursor()
+
         try:
-            show_wait_cursor()
-            crs_window = CRSSettingsWindow(self, self.model, self.controller)
+            crs_window = CRSSettingsWindow(self, self.controller)
             crs_window.show()
+
         except Exception as exception:
-            message = (f"Não foi possível abrir a janela de configuração do SRC"
-                       f"\n\nMotivo: {exception}")
-            show_popup(message, "error")
+            show_popup(f"Não foi possível abrir a janela de configuração do SRC\n\nMotivo: {exception}", "error")
+
         show_wait_cursor(False)
 
     def reproject_btn_clicked(self):
+        show_wait_cursor()
+
         try:
-            show_wait_cursor()
-            reproject_window = ReprojectWindow(self, self.model, self.controller)
+            reproject_window = ReprojectWindow(self, self.controller)
             reproject_window.show()
+
         except Exception as exception:
-            message = (f"Não foi possível abrir a janela de reprojeção"
-                       f"\n\nMotivo: {exception}")
-            show_popup(message, "error")
+            show_popup(f"Não foi possível abrir a janela de reprojeção\n\nMotivo: {exception}", "error")
+
         show_wait_cursor(False)
 
     def save_table_btn_clicked(self):
         try:
             self.controller.save_csv()
+
         except Exception as exception:
-            message = (f"Não foi possível salvar o arquivo CSV."
-                       f"\n\nMotivo: {exception}")
-            show_popup(message, "error")
+            show_popup(f"Não foi possível salvar o arquivo CSV.\n\nMotivo: {exception}", "error")
 
     def save_layer_btn_clicked(self):
         try:
             self.controller.build_gdf()
             saved = self.controller.save_points()
+
             if saved:
                 show_popup("Exportado com sucesso!")
-                if len(self.model.df) <= 100:
-                    self.map_preview_btn.setEnabled(True)
-                else:
-                    self.map_preview_btn.setEnabled(False)
+                self.map_preview_btn.setEnabled(True)
+
         except Exception as exception:
-            message = (f"Não foi possível exportar o arquivo de pontos."
-                       f"\n\nMotivo: {exception}")
-            show_popup(message, "error")
+            show_popup(f"Não foi possível exportar o arquivo de pontos.\n\nMotivo: {exception}", "error")
 
     def map_preview_btn_clicked(self):
+        show_wait_cursor()
+
         try:
-            show_wait_cursor()
-            map_window = MapWindow(self, self.model.gdf)
+            gdf = self.controller.get_model_attribute("gdf")
+            map_window = MapWindow(self, gdf)
             map_window.show()
+
         except Exception as exception:
-            message = (f"Não foi possível gerar o mapa."
-                       f"\n\nMotivo: {exception}")
-            show_popup(message, "error")
+            show_popup(f"Não foi possível gerar o mapa.\n\nMotivo: {exception}", "error")
+
         show_wait_cursor(False)
 
 
@@ -277,29 +272,27 @@ class ListRow(QWidget):
 
         self.dtype_cbx = QComboBox(self)
         self.dtype_cbx.setGeometry(273, 4, 90, 22)
-        self.dtype_cbx.addItems(dtype_dict.keys())
+        self.dtype_cbx.addItems(DTYPE_DICT.keys())
         key = self.get_dtype_key()
         self.dtype_cbx.setCurrentText(key)
 
     def get_icon(self):
-        dt_values = dtype_dict.values()
-        img = next(subdict["icon"] for subdict in dt_values
-                   if subdict["pandas_type"] == self.dtype)
+        dt_values = DTYPE_DICT.values()
+        img = next(subdict["icon"] for subdict in dt_values if subdict["pandas_type"] == self.dtype)
         return QIcon(img)
 
     def get_dtype_key(self):
-        dt_items = dtype_dict.items()
-        key = next(key for key, subdict in dt_items
-                   if subdict["pandas_type"] == self.dtype)
+        dt_items = DTYPE_DICT.items()
+        key = next(key for key, subdict in dt_items if subdict["pandas_type"] == self.dtype)
         return key
 
 
 class CRSSettingsWindow(QMainWindow):
 
-    def __init__(self, parent, model, controller):
+    def __init__(self, parent, controller):
         super(CRSSettingsWindow, self).__init__(parent)
+
         self.parent = parent
-        self.model = model
         self.controller = controller
 
         self.setWindowTitle('Configurações de SRC')
@@ -325,10 +318,8 @@ class CRSSettingsWindow(QMainWindow):
         )
         self.y_lbl = QLabel("Latitude/Northing")
         self.y_cbx = QComboBox()
-        self.y_cbx.setToolTip("A coluna da tabela que contém a coordenada Y "
-                              "(Northing/Latitude). \nApenas colunas contendo "
-                              "valores numéricos dentro do intervalo esperado "
-                              "para o SRC aparecerão aqui.")
+        self.y_cbx.setToolTip("A coluna da tabela que contém a coordenada Y (Northing/Latitude). \nApenas colunas "
+                              "contendo valores numéricos dentro do intervalo esperado para o SRC aparecerão aqui.")
         self.y_cbx.currentTextChanged.connect(self.yx_column_changed)
 
         self.x_icn = QLabel()
@@ -337,10 +328,8 @@ class CRSSettingsWindow(QMainWindow):
         )
         self.x_lbl = QLabel("Longitude/Easting")
         self.x_cbx = QComboBox()
-        self.x_cbx.setToolTip("A coluna da tabela que contém a coordenada X "
-                              "(Easting/Longitude). \nApenas colunas contendo "
-                              "valores numéricos dentro do intervalo esperado "
-                              "para o SRC aparecerão aqui.")
+        self.x_cbx.setToolTip("A coluna da tabela que contém a coordenada X (Easting/Longitude). \nApenas colunas "
+                              "contendo valores numéricos dentro do intervalo esperado para o SRC aparecerão aqui.")
         self.x_cbx.currentTextChanged.connect(self.yx_column_changed)
 
         self.cancel_btn = QToolButton()
@@ -384,14 +373,10 @@ class CRSSettingsWindow(QMainWindow):
         crs_list = self.controller.get_crs_list()
         self.crs_cbx.clear()
         self.crs_cbx.addItems(crs_list)
-        """
-        self.crs_cbx.setIconSize(QSize(20, 20))
-        icon_list = self.controller.get_crs_icons(crs_list)
-        for i, crs in enumerate(icon_list):
-            self.crs_cbx.setItemIcon(i, icon)
-        """
-        if self.model.crs is not None:
-            self.crs_cbx.setCurrentText(self.model.crs)
+
+        crs = self.controller.get_model_attribute("crs")
+        if crs is not None:
+            self.crs_cbx.setCurrentText(crs)
         else:
             self.crs_cbx.setCurrentText("SIRGAS 2000 (EPSG:4674)")
 
@@ -411,13 +396,15 @@ class CRSSettingsWindow(QMainWindow):
             self.y_cbx.addItems(y_columns)
             self.x_cbx.clear()
             self.x_cbx.addItems(x_columns)
-            if (self.model.crs == crs_key
-                    and self.model.y_column in y_columns
-                    and self.model.x_column in x_columns
-                    and self.model.y_column is not None
-                    and self.model.x_column is not None):
-                self.y_cbx.setCurrentText(self.model.y_column)
-                self.x_cbx.setCurrentText(self.model.x_column)
+
+            crs = self.controller.get_model_attribute("crs")
+            y_column = self.controller.get_model_attribute("y_column")
+            x_column = self.controller.get_model_attribute("x_column")
+
+            if (crs == crs_key and y_column in y_columns and x_column in x_columns
+                    and y_column is not None and x_column is not None):
+                self.y_cbx.setCurrentText(y_column)
+                self.x_cbx.setCurrentText(x_column)
             else:
                 y_col = self.controller.select_coord_column("y", y_columns)
                 x_col = self.controller.select_coord_column("x", x_columns)
@@ -426,9 +413,7 @@ class CRSSettingsWindow(QMainWindow):
                 if x_col:
                     self.x_cbx.setCurrentText(x_col)
         except Exception as exception:
-            message = (f"Não foi possível encontrar a lista de colunas de "
-                       f"coordenadas.\n\nMotivo: {exception}")
-            show_popup(message, "error")
+            show_popup(f"Não foi possível encontrar a lista de colunas de coordenadas.\n\nMotivo: {exception}", "error")
 
     def yx_column_changed(self):
         if self.y_cbx.currentText() == "" or self.x_cbx.currentText() == "":
@@ -442,25 +427,23 @@ class CRSSettingsWindow(QMainWindow):
             y = self.y_cbx.currentText()
             x = self.x_cbx.currentText()
 
-            self.model.crs = crs_key
-            self.model.y_column = y
-            self.model.x_column = x
+            self.controller.set_model_attribute("crs", crs_key)
+            self.controller.set_model_attribute("y_column", y)
+            self.controller.set_model_attribute("x_column", x)
 
             self.parent.reproject_btn.setEnabled(True)
             self.parent.save_layer_btn.setEnabled(True)
 
             self.close()
         except Exception as exception:
-            message = (f"Não foi possível configurar o sistema de referência de"
-                       f" coordenadas.\n\nMotivo: {exception}")
-            show_popup(message, "error")
+            show_popup(f"Não foi possível configurar o SRC.\n\nMotivo: {exception}", "error")
 
 
 class ReprojectWindow(QMainWindow):
-    def __init__(self, parent, model, controller):
+    def __init__(self, parent, controller):
         super(ReprojectWindow, self).__init__(parent)
+
         self.parent = parent
-        self.model = model
         self.controller = controller
 
         self.setWindowTitle('Reprojetar coordenadas')
@@ -473,8 +456,7 @@ class ReprojectWindow(QMainWindow):
 
         self.input_crs_lbl = QLabel("SRC de entrada:")
 
-        self.input_crs_edt = QLineEdit(self.model.crs)
-        #self.input_crs_edt.setReadOnly(True)
+        self.input_crs_edt = QLineEdit(self.controller.get_model_attribute("crs"))
         self.input_crs_edt.setEnabled(False)
         self.input_crs_edt.setMinimumHeight(25)
         self.input_crs_edt.setMaximumHeight(25)
@@ -533,14 +515,13 @@ class ReprojectWindow(QMainWindow):
             show_popup("Coordenadas reprojetadas com sucesso!")
             self.parent.update_list()
             self.close()
+
         except Exception as exception:
-            message = f"Não foi possível reprojetar.\n\nMotivo: {exception}"
-            show_popup(message, "error")
+            show_popup(f"Não foi possível reprojetar.\n\nMotivo: {exception}", "error")
 
 
 class MapWindow(QMainWindow):
     def __init__(self, parent, gdf):
-
         super(MapWindow, self).__init__(parent)
 
         self.gdf = gdf
@@ -575,8 +556,7 @@ class MapWindow(QMainWindow):
 
         yx = [gdf.geometry.y[0], gdf.geometry.x[0]]
 
-        webmap = folium.Map(location=yx, zoom_start=12, minZoom=5,
-                            control_scale=True, zoomControl=True,
+        webmap = folium.Map(location=yx, zoom_start=12, minZoom=5, control_scale=True, zoomControl=True,
                             tiles='openstreetmap', attributionControl=True)
 
         folium.raster_layers.WmsTileLayer(
@@ -586,8 +566,6 @@ class MapWindow(QMainWindow):
             overlay=False
         ).add_to(webmap)
 
-        f = columns[0:-1] if len(columns) <= 11 else columns[0:11]
-
         folium.GeoJson(
             gdf.to_json(),
             name='Pontos',
@@ -595,10 +573,6 @@ class MapWindow(QMainWindow):
             tooltip=folium.features.GeoJsonTooltip(
                 fields=[columns[0]],
                 labels=False
-            ),
-            popup=folium.features.GeoJsonPopup(
-                fields=f,
-                aliases=f
             )
         ).add_to(webmap)
 
@@ -619,7 +593,13 @@ class MapWindow(QMainWindow):
         return webmap
 
 
-def show_popup(message, msg_type="notification"):
+def show_popup(message: str, msg_type: str = "notification"):
+    """
+    Exibe uma mensagem em popup.
+    :param message: Conteúdo da popup.
+    :param msg_type: "notification" ou "error". Define o ícone a ser exibido.
+    :return: Nada.
+    """
     popup_types = {
         "notification": {"title": "Notificação", "icon": "icons/globe.png"},
         "error":        {"title": "Erro",        "icon": "icons/error.png"}
@@ -631,34 +611,63 @@ def show_popup(message, msg_type="notification"):
     popup.setText(message)
     popup.setWindowTitle(title)
     popup.setWindowIcon(icon)
+
     popup.exec()
 
 
-def show_file_dialog(caption, extension_filter, mode="open"):
+def show_file_dialog(caption: str, extension_filter: str, mode: str = "open", parent: QMainWindow = None) -> str:
+    """
+    Exibe um diálogo de abertura/salvamento de arquivo.
+    :param caption: Título do diálogo.
+    :param extension_filter: Filtro de extensões de arquivo.
+    :param mode: "open" ou "save".
+    :param parent: Janela pai.
+    :return: Caminho completo do arquivo (str).
+    """
     if mode == "open":
-        file_name, file_type = QFileDialog.getOpenFileName(
-            caption=caption, filter=extension_filter
-        )
+        file_name, file_type = QFileDialog.getOpenFileName(parent, caption=caption, filter=extension_filter)
     else:
-        file_name, file_type = QFileDialog.getSaveFileName(
-            caption=caption, filter=extension_filter
-        )
-    return file_name, file_type
+        file_name, file_type = QFileDialog.getSaveFileName(parent, caption=caption, filter=extension_filter)
+
+    return file_name
 
 
 def show_selection_dialog(message: str, items: list, selected=0,
-                          title="Selecionar opções"):
-    choice, ok = QInputDialog.getItem(None, title, message, items, selected,
-                                      editable=False)
+                          title="Selecionar opções", parent: QMainWindow = None) -> (str, bool):
+    """
+    Exibe um diálogo de seleção de opções.
+    :param message: Mensagem ao usuário.
+    :param items: Opções para seleção na combobox.
+    :param selected: Índice da opção selecionada por padrão.
+    :param title: Título da janela.
+    :param parent: Janela pai.
+    :return: A opção selecionada e se o botão de OK foi clicado (str, bool).
+    """
+    choice, ok = QInputDialog.getItem(parent, title, message, items, selected, editable=False)
+
     return choice, ok
 
 
-def show_input_dialog(message, title="", text=""):
-    user_input, ok = QInputDialog.getText(None, title, message, text=text)
+def show_input_dialog(message: str, title: str = "Inserir", default_text: str = "", parent: QMainWindow = None) -> (str, bool):
+    """
+    Exibe um diálogo para inserção de uma string.
+    :param message: Mensagem ao usuário.
+    :param title: Título da janela.
+    :param default_text: Texto padrão na caixa.
+    :param parent: Janela pai.
+    :return: O texto inserido e se o botão de OK foi clicado (str, bool)
+    """
+    user_input, ok = QInputDialog.getText(parent, title, message, text=default_text)
+
     return user_input, ok
 
 
-def show_wait_cursor(activate=True):
+def show_wait_cursor(activate: bool = True):
+    """
+    Substitui o cursor padrão pelo cursor de ocupado.
+    :param activate: True para mostrar o cursor de espera e False para restaurar o cursor normal.
+    :return: Nada.
+    """
     if activate:
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
     else:

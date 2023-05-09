@@ -1,13 +1,12 @@
+# -*- coding: utf-8 -*-
+"""
+@author: Gabriel Maccari
+"""
 import pandas
+import geopandas
 import pyproj
-from csv import Sniffer
-from collections import Counter
-from PyQt6.QtWidgets import *
-from PyQt6.QtGui import *
-from PyQt6.QtCore import *
-import sys
 
-dtype_dict = {
+DTYPE_DICT = {
     "String": {
         "pandas_type": "object",
         "icon": "icons/string.png",
@@ -39,8 +38,7 @@ dtype_dict = {
 }
 
 crs_dict = {}
-for crs in pyproj.database.query_crs_info(
-        pj_types=["GEOGRAPHIC_2D_CRS", "PROJECTED_CRS"]):
+for crs in pyproj.database.query_crs_info(pj_types=["GEOGRAPHIC_2D_CRS", "PROJECTED_CRS"]):
     key = f"{crs.name} ({crs.auth_name}:{crs.code})"
     crs_dict[key] = {
         "name": crs.name,
@@ -50,15 +48,15 @@ for crs in pyproj.database.query_crs_info(
         "area_of_use": crs.area_of_use
     }
 
-class GeographicTable():
 
-    def __init__(self):
-        self.path = None
-        self.excel_file = None
-        self.multiple_sheets = False
-        self.df = None
+class GeographicTable:
+    def __init__(self, path: str = None, excel_file: pandas.ExcelFile = None, df: pandas.DataFrame = None,
+                 crs: str = None, y_column: str = None, x_column: str = None, gdf: geopandas.GeoDataFrame = None):
+        self.path = path
+        self.excel_file = excel_file
+        self.df = df
 
-        self.crs = None
-        self.y_column = None
-        self.x_column = None
-        self.gdf = None
+        self.crs = crs
+        self.y_column = y_column
+        self.x_column = x_column
+        self.gdf = gdf
