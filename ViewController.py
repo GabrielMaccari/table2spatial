@@ -2,18 +2,19 @@
 """
 @author: Gabriel Maccari
 """
-from PyQt6.QtWidgets import *
-from PyQt6.QtGui import *
-from PyQt6.QtCore import *
-from PyQt6.QtWebEngineWidgets import QWebEngineView  # pip install PyQt6-WebEngine
-from folium.plugins import MeasureControl, MousePosition, Geocoder
-from io import BytesIO
 import folium
+
+from PyQt6 import QtWidgets
+from PyQt6 import QtGui
+from PyQt6 import QtCore
+from PyQt6 import QtWebEngineWidgets  # pip install PyQt6-WebEngine
+from io import BytesIO
+from folium.plugins import MeasureControl, MousePosition, Geocoder
 
 from Model import DTYPE_DICT, crs_dict
 
 
-class AppMainWindow(QMainWindow):
+class AppMainWindow(QtWidgets.QMainWindow):
 
     def __init__(self, controller):
 
@@ -24,75 +25,75 @@ class AppMainWindow(QMainWindow):
         self.file_open = False
 
         self.setWindowTitle('table2spatial')
-        self.setWindowIcon(QIcon('icons/globe.png'))
+        self.setWindowIcon(QtGui.QIcon('icons/globe.png'))
         self.setMaximumSize(425, 550)
 
-        layout = QGridLayout()
+        layout = QtWidgets.QGridLayout()
         layout.setSpacing(5)
-        layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignLeft)
 
-        self.open_file_btn = QToolButton(self)
+        self.open_file_btn = QtWidgets.QToolButton(self)
         self.open_file_btn.setToolTip("Importar tabela de pontos")
-        self.open_file_btn.setIcon(QIcon("icons/excel.png"))
+        self.open_file_btn.setIcon(QtGui.QIcon("icons/excel.png"))
         self.open_file_btn.setMinimumSize(40, 40)
         self.open_file_btn.setMaximumSize(40, 40)
         self.open_file_btn.clicked.connect(self.open_file_btn_clicked)
 
-        self.merge_btn = QToolButton(self)
+        self.merge_btn = QtWidgets.QToolButton(self)
         self.merge_btn.setToolTip("Mesclar abas do arquivo usando um campo em comum")
-        self.merge_btn.setIcon(QIcon("icons/merge.png"))
+        self.merge_btn.setIcon(QtGui.QIcon("icons/merge.png"))
         self.merge_btn.setMinimumSize(40, 40)
         self.merge_btn.setMaximumSize(40, 40)
         self.merge_btn.clicked.connect(self.merge_btn_clicked)
         self.merge_btn.setEnabled(False)
 
-        self.crs_settings_btn = QToolButton(self)
+        self.crs_settings_btn = QtWidgets.QToolButton(self)
         self.crs_settings_btn.setToolTip("Configurar SRC e campos de coordenadas")
-        self.crs_settings_btn.setIcon(QIcon("icons/settings.png"))
+        self.crs_settings_btn.setIcon(QtGui.QIcon("icons/settings.png"))
         self.crs_settings_btn.setMinimumSize(40, 40)
         self.crs_settings_btn.setMaximumSize(40, 40)
         self.crs_settings_btn.clicked.connect(self.crs_settings_btn_clicked)
         self.crs_settings_btn.setEnabled(False)
 
-        self.reproject_btn = QToolButton(self)
+        self.reproject_btn = QtWidgets.QToolButton(self)
         self.reproject_btn.setToolTip("Reprojetar coordenadas para outro SRC")
-        self.reproject_btn.setIcon(QIcon("icons/reproject.png"))
+        self.reproject_btn.setIcon(QtGui.QIcon("icons/reproject.png"))
         self.reproject_btn.setMaximumSize(40, 40)
         self.reproject_btn.setMaximumSize(40, 40)
         self.reproject_btn.clicked.connect(self.reproject_btn_clicked)
         self.reproject_btn.setEnabled(False)
 
-        self.save_table_btn = QToolButton(self)
+        self.save_table_btn = QtWidgets.QToolButton(self)
         self.save_table_btn.setToolTip("Exportar como CSV")
-        self.save_table_btn.setIcon(QIcon("icons/table.png"))
+        self.save_table_btn.setIcon(QtGui.QIcon("icons/table.png"))
         self.save_table_btn.setMinimumSize(40, 40)
         self.save_table_btn.setMaximumSize(40, 40)
         self.save_table_btn.clicked.connect(self.save_table_btn_clicked)
         self.save_table_btn.setEnabled(False)
 
-        self.save_layer_btn = QToolButton(self)
+        self.save_layer_btn = QtWidgets.QToolButton(self)
         self.save_layer_btn.setToolTip("Exportar como camada vetorial de pontos")
-        self.save_layer_btn.setIcon(QIcon("icons/layers.png"))
+        self.save_layer_btn.setIcon(QtGui.QIcon("icons/layers.png"))
         self.save_layer_btn.setMinimumSize(40, 40)
         self.save_layer_btn.setMaximumSize(40, 40)
         self.save_layer_btn.clicked.connect(self.save_layer_btn_clicked)
         self.save_layer_btn.setEnabled(False)
 
-        self.map_preview_btn = QToolButton(self)
+        self.map_preview_btn = QtWidgets.QToolButton(self)
         self.map_preview_btn.setToolTip("Visualizar uma prévia dos dados em mapa")
-        self.map_preview_btn.setIcon(QIcon("icons/map.png"))
+        self.map_preview_btn.setIcon(QtGui.QIcon("icons/map.png"))
         self.map_preview_btn.setMinimumSize(40, 40)
         self.map_preview_btn.setMaximumSize(40, 40)
         self.map_preview_btn.clicked.connect(self.map_preview_btn_clicked)
         self.map_preview_btn.setEnabled(False)
 
-        self.df_columns_lsw = QListWidget(self)
+        self.df_columns_lsw = QtWidgets.QListWidget(self)
         self.df_columns_lsw.setMinimumSize(410, 480)
         self.df_columns_lsw.setMaximumSize(410, 480)
-        self.df_columns_lsw.setIconSize(QSize(22, 22))
-        self.df_columns_lsw.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.df_columns_lsw.setIconSize(QtCore.QSize(22, 22))
+        self.df_columns_lsw.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
-        copyright_lbl = QLabel("©2023 Gabriel Maccari / Icons by www.icons8.com")
+        copyright_lbl = QtWidgets.QLabel("©2023 Gabriel Maccari / Icons by www.icons8.com")
         copyright_lbl.setStyleSheet("font-size: 8pt")
 
         layout.addWidget(self.open_file_btn, 0, 0, 1, 1)
@@ -105,7 +106,7 @@ class AppMainWindow(QMainWindow):
         layout.addWidget(self.df_columns_lsw, 1, 0, 20, 8)
         layout.addWidget(copyright_lbl, 22, 0, 1, 8)
 
-        widget = QWidget(self)
+        widget = QtWidgets.QWidget(self)
         widget.setLayout(layout)
         self.setCentralWidget(widget)
 
@@ -158,9 +159,9 @@ class AppMainWindow(QMainWindow):
                 self.column_list_widgets.append(widget)
                 self.dtypes_list.append(str(column_type))
 
-                item = QListWidgetItem()
+                item = QtWidgets.QListWidgetItem()
                 item.setIcon(widget.get_icon())
-                item.setSizeHint(QSize(410, 30))
+                item.setSizeHint(QtCore.QSize(410, 30))
                 self.df_columns_lsw.addItem(item)
                 self.df_columns_lsw.setItemWidget(item, widget)
                 row += 1
@@ -257,7 +258,7 @@ class AppMainWindow(QMainWindow):
         show_wait_cursor(False)
 
 
-class ListRow(QWidget):
+class ListRow(QtWidgets.QWidget):
 
     def __init__(self, column_name, column_dtype):
 
@@ -266,11 +267,11 @@ class ListRow(QWidget):
         self.field = column_name
         self.dtype = column_dtype
 
-        self.column_lbl = QLabel(self)
+        self.column_lbl = QtWidgets.QLabel(self)
         self.column_lbl.setText(self.field)
         self.column_lbl.setGeometry(5, 0, 260, 30)
 
-        self.dtype_cbx = QComboBox(self)
+        self.dtype_cbx = QtWidgets.QComboBox(self)
         self.dtype_cbx.setGeometry(273, 4, 90, 22)
         self.dtype_cbx.addItems(DTYPE_DICT.keys())
         key = self.get_dtype_key()
@@ -279,7 +280,7 @@ class ListRow(QWidget):
     def get_icon(self):
         dt_values = DTYPE_DICT.values()
         img = next(subdict["icon"] for subdict in dt_values if subdict["pandas_type"] == self.dtype)
-        return QIcon(img)
+        return QtGui.QIcon(img)
 
     def get_dtype_key(self):
         dt_items = DTYPE_DICT.items()
@@ -287,7 +288,7 @@ class ListRow(QWidget):
         return key
 
 
-class CRSSettingsWindow(QMainWindow):
+class CRSSettingsWindow(QtWidgets.QMainWindow):
 
     def __init__(self, parent, controller):
         super(CRSSettingsWindow, self).__init__(parent)
@@ -296,52 +297,52 @@ class CRSSettingsWindow(QMainWindow):
         self.controller = controller
 
         self.setWindowTitle('Configurações de SRC')
-        self.setWindowIcon(QIcon('icons/globe.png'))
+        self.setWindowIcon(QtGui.QIcon('icons/globe.png'))
         self.setMinimumWidth(400)
 
-        layout = QGridLayout()
+        layout = QtWidgets.QGridLayout()
         layout.setVerticalSpacing(6)
         layout.setHorizontalSpacing(3)
 
-        self.crs_lbl = QLabel("SRC dos dados de entrada")
+        self.crs_lbl = QtWidgets.QLabel("SRC dos dados de entrada")
         self.crs_lbl.setStyleSheet("font-size: 11pt;")
 
-        self.crs_cbx = QComboBox()
+        self.crs_cbx = QtWidgets.QComboBox()
         self.crs_cbx.currentTextChanged.connect(self.crs_changed)
 
-        self.coord_fields_lbl = QLabel("Campos de coordenadas")
+        self.coord_fields_lbl = QtWidgets.QLabel("Campos de coordenadas")
         self.coord_fields_lbl.setStyleSheet("font-size: 11pt;")
 
-        self.y_icn = QLabel()
-        self.y_icn.setPixmap(QPixmap("icons/lat.png").scaled(
-            22, 22, transformMode=Qt.TransformationMode.SmoothTransformation)
+        self.y_icn = QtWidgets.QLabel()
+        self.y_icn.setPixmap(QtGui.QPixmap("icons/lat.png").scaled(
+            22, 22, transformMode=QtCore.Qt.TransformationMode.SmoothTransformation)
         )
-        self.y_lbl = QLabel("Latitude/Northing")
-        self.y_cbx = QComboBox()
+        self.y_lbl = QtWidgets.QLabel("Latitude/Northing")
+        self.y_cbx = QtWidgets.QComboBox()
         self.y_cbx.setToolTip("A coluna da tabela que contém a coordenada Y (Northing/Latitude). \nApenas colunas "
                               "contendo valores numéricos dentro do intervalo esperado para o SRC aparecerão aqui.")
         self.y_cbx.currentTextChanged.connect(self.yx_column_changed)
 
-        self.x_icn = QLabel()
-        self.x_icn.setPixmap(QPixmap("icons/lon.png").scaled(
-            22, 22, transformMode=Qt.TransformationMode.SmoothTransformation)
+        self.x_icn = QtWidgets.QLabel()
+        self.x_icn.setPixmap(QtGui.QPixmap("icons/lon.png").scaled(
+            22, 22, transformMode=QtCore.Qt.TransformationMode.SmoothTransformation)
         )
-        self.x_lbl = QLabel("Longitude/Easting")
-        self.x_cbx = QComboBox()
+        self.x_lbl = QtWidgets.QLabel("Longitude/Easting")
+        self.x_cbx = QtWidgets.QComboBox()
         self.x_cbx.setToolTip("A coluna da tabela que contém a coordenada X (Easting/Longitude). \nApenas colunas "
                               "contendo valores numéricos dentro do intervalo esperado para o SRC aparecerão aqui.")
         self.x_cbx.currentTextChanged.connect(self.yx_column_changed)
 
-        self.cancel_btn = QToolButton()
-        self.cancel_btn.setIcon(QIcon("icons/cancel.png"))
+        self.cancel_btn = QtWidgets.QToolButton()
+        self.cancel_btn.setIcon(QtGui.QIcon("icons/cancel.png"))
         self.cancel_btn.setToolTip("Descartar alterações e fechar")
         self.cancel_btn.setStyleSheet("qproperty-iconSize: 22px 22px;")
         self.cancel_btn.setMinimumSize(30, 30)
         self.cancel_btn.setMaximumSize(30, 30)
         self.cancel_btn.clicked.connect(self.close)
 
-        self.ok_btn = QToolButton()
-        self.ok_btn.setIcon(QIcon("icons/ok.png"))
+        self.ok_btn = QtWidgets.QToolButton()
+        self.ok_btn.setIcon(QtGui.QIcon("icons/ok.png"))
         self.ok_btn.setToolTip("Salvar e fechar")
         self.ok_btn.setStyleSheet("qproperty-iconSize: 22px 22px;")
         self.ok_btn.setMinimumSize(30, 30)
@@ -360,7 +361,7 @@ class CRSSettingsWindow(QMainWindow):
         layout.addWidget(self.cancel_btn, 5, 9, 1, 1)
         layout.addWidget(self.ok_btn, 5, 10, 1, 1)
 
-        widget = QWidget(self)
+        widget = QtWidgets.QWidget(self)
         widget.setLayout(layout)
         self.setCentralWidget(widget)
 
@@ -439,45 +440,45 @@ class CRSSettingsWindow(QMainWindow):
             show_popup(f"Não foi possível configurar o SRC.\n\nMotivo: {exception}", "error")
 
 
-class ReprojectWindow(QMainWindow):
-    def __init__(self, parent, controller):
+class ReprojectWindow(QtWidgets.QMainWindow):
+    def __init__(self, parent: AppMainWindow, controller):
         super(ReprojectWindow, self).__init__(parent)
 
         self.parent = parent
         self.controller = controller
 
         self.setWindowTitle('Reprojetar coordenadas')
-        self.setWindowIcon(QIcon('icons/globe.png'))
+        self.setWindowIcon(QtGui.QIcon('icons/globe.png'))
         self.setMinimumWidth(400)
 
-        layout = QGridLayout()
+        layout = QtWidgets.QGridLayout()
         layout.setVerticalSpacing(6)
         layout.setHorizontalSpacing(3)
 
-        self.input_crs_lbl = QLabel("SRC de entrada:")
+        self.input_crs_lbl = QtWidgets.QLabel("SRC de entrada:")
 
-        self.input_crs_edt = QLineEdit(self.controller.get_model_attribute("crs"))
+        self.input_crs_edt = QtWidgets.QLineEdit(self.controller.get_model_attribute("crs"))
         self.input_crs_edt.setEnabled(False)
         self.input_crs_edt.setMinimumHeight(25)
         self.input_crs_edt.setMaximumHeight(25)
 
-        self.output_crs_lbl = QLabel("SRC de saída:")
+        self.output_crs_lbl = QtWidgets.QLabel("SRC de saída:")
 
-        self.output_crs_cbx = QComboBox()
+        self.output_crs_cbx = QtWidgets.QComboBox()
         self.output_crs_cbx.setMinimumHeight(23)
         self.output_crs_cbx.setMaximumHeight(23)
         self.output_crs_cbx.currentTextChanged.connect(self.output_crs_changed)
 
-        self.cancel_btn = QToolButton()
-        self.cancel_btn.setIcon(QIcon("icons/cancel.png"))
+        self.cancel_btn = QtWidgets.QToolButton()
+        self.cancel_btn.setIcon(QtGui.QIcon("icons/cancel.png"))
         self.cancel_btn.setToolTip("Descartar alterações e fechar")
         self.cancel_btn.setStyleSheet("qproperty-iconSize: 22px 22px;")
         self.cancel_btn.setMinimumSize(30, 30)
         self.cancel_btn.setMaximumSize(30, 30)
         self.cancel_btn.clicked.connect(self.close)
 
-        self.ok_btn = QToolButton()
-        self.ok_btn.setIcon(QIcon("icons/ok.png"))
+        self.ok_btn = QtWidgets.QToolButton()
+        self.ok_btn.setIcon(QtGui.QIcon("icons/ok.png"))
         self.ok_btn.setToolTip("Salvar e fechar")
         self.ok_btn.setStyleSheet("qproperty-iconSize: 22px 22px;")
         self.ok_btn.setMinimumSize(30, 30)
@@ -491,7 +492,7 @@ class ReprojectWindow(QMainWindow):
         layout.addWidget(self.cancel_btn, 4, 8, 1, 1)
         layout.addWidget(self.ok_btn, 4, 9, 1, 1)
 
-        widget = QWidget(self)
+        widget = QtWidgets.QWidget(self)
         widget.setLayout(layout)
         self.setCentralWidget(widget)
 
@@ -520,21 +521,21 @@ class ReprojectWindow(QMainWindow):
             show_popup(f"Não foi possível reprojetar.\n\nMotivo: {exception}", "error")
 
 
-class MapWindow(QMainWindow):
+class MapWindow(QtWidgets.QMainWindow):
     def __init__(self, parent, gdf):
         super(MapWindow, self).__init__(parent)
 
         self.gdf = gdf
 
         self.setWindowTitle("Mapa")
-        self.setWindowIcon(QIcon('icons/globe.png'))
+        self.setWindowIcon(QtGui.QIcon('icons/globe.png'))
 
         m = self.build_webmap()
 
         data = BytesIO()
         m.save(data, close_file=False)
 
-        map_wev = QWebEngineView(self)
+        map_wev = QtWebEngineWidgets.QWebEngineView(self)
         map_wev.setHtml(data.getvalue().decode())
         map_wev.setGeometry(0, 0, 700, 500)
 
@@ -605,9 +606,9 @@ def show_popup(message: str, msg_type: str = "notification"):
         "error":        {"title": "Erro",        "icon": "icons/error.png"}
     }
     title = popup_types[msg_type]["title"]
-    icon = QIcon(popup_types[msg_type]["icon"])
+    icon = QtGui.QIcon(popup_types[msg_type]["icon"])
 
-    popup = QMessageBox()
+    popup = QtWidgets.QMessageBox()
     popup.setText(message)
     popup.setWindowTitle(title)
     popup.setWindowIcon(icon)
@@ -615,7 +616,7 @@ def show_popup(message: str, msg_type: str = "notification"):
     popup.exec()
 
 
-def show_file_dialog(caption: str, extension_filter: str, mode: str = "open", parent: QMainWindow = None) -> str:
+def show_file_dialog(caption: str, extension_filter: str, mode: str = "open", parent: QtWidgets.QMainWindow = None) -> str:
     """
     Exibe um diálogo de abertura/salvamento de arquivo.
     :param caption: Título do diálogo.
@@ -625,15 +626,15 @@ def show_file_dialog(caption: str, extension_filter: str, mode: str = "open", pa
     :return: Caminho completo do arquivo (str).
     """
     if mode == "open":
-        file_name, file_type = QFileDialog.getOpenFileName(parent, caption=caption, filter=extension_filter)
+        file_name, file_type = QtWidgets.QFileDialog.getOpenFileName(parent, caption=caption, filter=extension_filter)
     else:
-        file_name, file_type = QFileDialog.getSaveFileName(parent, caption=caption, filter=extension_filter)
+        file_name, file_type = QtWidgets.QFileDialog.getSaveFileName(parent, caption=caption, filter=extension_filter)
 
     return file_name
 
 
 def show_selection_dialog(message: str, items: list, selected=0,
-                          title="Selecionar opções", parent: QMainWindow = None) -> (str, bool):
+                          title="Selecionar opções", parent: QtWidgets.QMainWindow = None) -> (str, bool):
     """
     Exibe um diálogo de seleção de opções.
     :param message: Mensagem ao usuário.
@@ -643,12 +644,13 @@ def show_selection_dialog(message: str, items: list, selected=0,
     :param parent: Janela pai.
     :return: A opção selecionada e se o botão de OK foi clicado (str, bool).
     """
-    choice, ok = QInputDialog.getItem(parent, title, message, items, selected, editable=False)
+    choice, ok = QtWidgets.QInputDialog.getItem(parent, title, message, items, selected, editable=False)
 
     return choice, ok
 
 
-def show_input_dialog(message: str, title: str = "Inserir", default_text: str = "", parent: QMainWindow = None) -> (str, bool):
+def show_input_dialog(message: str, title: str = "Inserir", default_text: str = "",
+                      parent: QtWidgets.QMainWindow = None) -> (str, bool):
     """
     Exibe um diálogo para inserção de uma string.
     :param message: Mensagem ao usuário.
@@ -657,7 +659,7 @@ def show_input_dialog(message: str, title: str = "Inserir", default_text: str = 
     :param parent: Janela pai.
     :return: O texto inserido e se o botão de OK foi clicado (str, bool)
     """
-    user_input, ok = QInputDialog.getText(parent, title, message, text=default_text)
+    user_input, ok = QtWidgets.QInputDialog.getText(parent, title, message, text=default_text)
 
     return user_input, ok
 
@@ -669,6 +671,6 @@ def show_wait_cursor(activate: bool = True):
     :return: Nada.
     """
     if activate:
-        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.CursorShape.WaitCursor)
     else:
-        QApplication.restoreOverrideCursor()
+        QtWidgets.QApplication.restoreOverrideCursor()

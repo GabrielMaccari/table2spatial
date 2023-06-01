@@ -4,14 +4,14 @@
 """
 import pyproj
 import numpy
+import csv
 import pandas
+import collections
 import geopandas
-from csv import Sniffer
-from collections import Counter
-from os import getcwd
-from PyQt6.QtGui import QIcon
 
-from View import show_popup, show_file_dialog, show_selection_dialog, show_input_dialog, show_wait_cursor
+from PyQt6 import QtGui
+
+from ViewController import show_popup, show_file_dialog, show_selection_dialog, show_input_dialog, show_wait_cursor
 from Model import crs_dict, GeographicTable
 
 
@@ -45,7 +45,11 @@ class MainController:
 
         if file_open:
             df = self.process_data(df)
-            multiple_sheets = True if len(excel_file.sheet_names) > 1 else False
+
+            if excel_file is not None:
+                multiple_sheets = True if len(excel_file.sheet_names) > 1 else False
+            else:
+                multiple_sheets = False
 
             self.create_new_model_instance(path, excel_file, df)
 
@@ -57,10 +61,11 @@ class MainController:
         excel_file, df = None, None
         # Arquivo csv
         if path.endswith(".csv"):
-            sniffer = Sniffer()
+            sniffer = csv.Sniffer()
             data = open(path, "r").read(4096)
             sep = str(sniffer.sniff(data).delimiter)
             df = pandas.read_csv(path, delimiter=sep)
+
         # Arquivo xlsx, xlsm ou ods
         else:
             engine = ("odf" if path.endswith(".ods") else "openpyxl")
@@ -94,7 +99,7 @@ class MainController:
         for sheet_name in sheet_names:
             sheet = self.model.excel_file.parse(sheet_name=sheet_name)
             columns_list = columns_list + sheet.columns.to_list()
-        count = Counter(columns_list)
+        count = collections.Counter(columns_list)
         merge_column_options = [k for k, v in count.items() if v > 1]
 
         # Usuário seleciona a coluna de mescla
@@ -220,21 +225,25 @@ class MainController:
         return 0
 
     def save_csv(self):
-        self.model.df.to_csv("dataframe.csv", sep=";", decimal=",", encoding="utf-8-sig", index=False)
-        show_popup(f"DataFrame salvo em {getcwd()}\\dataframe.csv.")
+        path = show_file_dialog("Salvar tabela", "Comma Separated Values (*.csv)", "save", None)
+        if path != "":
+            if not path.endswith(".csv"):
+                path = path + ".csv"
+            self.model.df.to_csv(path, sep=";", decimal=",", encoding="utf-8-sig", index=False)
+            show_popup(f"Tabela salva com sucesso!")
 
     def get_crs_list(self) -> list[str]:
         crs_list = sorted(list(crs_dict.keys()), key=lambda x: (crs_dict[x]['name'], crs_dict[x]['type']))
 
         return crs_list
 
-    def get_crs_icons(self, crs_list: list[str]) -> list[QIcon]:
+    def get_crs_icons(self, crs_list: list[str]) -> list[QtGui.QIcon]:
         icon_list = []
         for crs in crs_list:
             if "GEOGRAPHIC" in str(crs_dict[crs]["type"]):
-                icon_list.append(QIcon("icons/latlon.png"))
+                icon_list.append(QtGui.QIcon("icons/latlon.png"))
             else:
-                icon_list.append(QIcon("icons/projected.png"))
+                icon_list.append(QtGui.QIcon("icons/projected.png"))
 
         return icon_list
 
