@@ -23,6 +23,8 @@ class AppMainWindow(QtWidgets.QMainWindow):
         self.controller = controller
 
         self.file_open = False
+        self.column_list_widgets = []
+        self.dtypes_list = []
 
         self.setWindowTitle('table2spatial')
         self.setWindowIcon(QtGui.QIcon('icons/globe.png'))
@@ -87,6 +89,14 @@ class AppMainWindow(QtWidgets.QMainWindow):
         self.map_preview_btn.clicked.connect(self.map_preview_btn_clicked)
         self.map_preview_btn.setEnabled(False)
 
+        self.organize_pictures_btn = QtWidgets.QToolButton(self)
+        self.organize_pictures_btn.setToolTip("Organizar fotos por ponto\n(disponível apenas para SRCs projetados)")
+        self.organize_pictures_btn.setIcon(QtGui.QIcon("icons/picture.png"))
+        self.organize_pictures_btn.setMinimumSize(40, 40)
+        self.organize_pictures_btn.setMaximumSize(40, 40)
+        self.organize_pictures_btn.clicked.connect(self.organize_pictures_btn_clicked)
+        self.organize_pictures_btn.setEnabled(False)
+
         self.df_columns_lsw = QtWidgets.QListWidget(self)
         self.df_columns_lsw.setMinimumSize(410, 480)
         self.df_columns_lsw.setMaximumSize(410, 480)
@@ -103,6 +113,7 @@ class AppMainWindow(QtWidgets.QMainWindow):
         layout.addWidget(self.save_table_btn, 0, 4, 1, 1)
         layout.addWidget(self.save_layer_btn, 0, 5, 1, 1)
         layout.addWidget(self.map_preview_btn, 0, 6, 1, 1)
+        layout.addWidget(self.organize_pictures_btn, 0, 7, 1, 1)
         layout.addWidget(self.df_columns_lsw, 1, 0, 20, 8)
         layout.addWidget(copyright_lbl, 22, 0, 1, 8)
 
@@ -234,7 +245,6 @@ class AppMainWindow(QtWidgets.QMainWindow):
 
     def save_layer_btn_clicked(self):
         try:
-            self.controller.build_gdf()
             saved = self.controller.save_points()
 
             if saved:
@@ -256,6 +266,16 @@ class AppMainWindow(QtWidgets.QMainWindow):
             show_popup(f"Não foi possível gerar o mapa.\n\nMotivo: {exception}", "error")
 
         show_wait_cursor(False)
+
+    def organize_pictures_btn_clicked(self):
+        try:
+            show_popup("Atenção! Essa ferramenta altera a posição dos arquivos. É\n"
+                       "recomendável fazer um backup das fotos antes de utilizá-la.")
+            pic_organizer_window = OrganizePicturesWindow(self, self.controller)
+            pic_organizer_window.show()
+
+        except Exception as exception:
+            show_popup(f"Não foi possível organizar as imagens.\n\nMotivo: {exception}", "error")
 
 
 class ListRow(QtWidgets.QWidget):
@@ -290,7 +310,7 @@ class ListRow(QtWidgets.QWidget):
 
 class CRSSettingsWindow(QtWidgets.QMainWindow):
 
-    def __init__(self, parent, controller):
+    def __init__(self, parent: AppMainWindow, controller):
         super(CRSSettingsWindow, self).__init__(parent)
 
         self.parent = parent
@@ -333,21 +353,13 @@ class CRSSettingsWindow(QtWidgets.QMainWindow):
                               "contendo valores numéricos dentro do intervalo esperado para o SRC aparecerão aqui.")
         self.x_cbx.currentTextChanged.connect(self.yx_column_changed)
 
-        self.cancel_btn = QtWidgets.QToolButton()
-        self.cancel_btn.setIcon(QtGui.QIcon("icons/cancel.png"))
-        self.cancel_btn.setToolTip("Descartar alterações e fechar")
-        self.cancel_btn.setStyleSheet("qproperty-iconSize: 22px 22px;")
-        self.cancel_btn.setMinimumSize(30, 30)
-        self.cancel_btn.setMaximumSize(30, 30)
-        self.cancel_btn.clicked.connect(self.close)
-
-        self.ok_btn = QtWidgets.QToolButton()
-        self.ok_btn.setIcon(QtGui.QIcon("icons/ok.png"))
+        self.ok_btn = QtWidgets.QPushButton("OK")
         self.ok_btn.setToolTip("Salvar e fechar")
-        self.ok_btn.setStyleSheet("qproperty-iconSize: 22px 22px;")
-        self.ok_btn.setMinimumSize(30, 30)
-        self.ok_btn.setMaximumSize(30, 30)
         self.ok_btn.clicked.connect(self.ok_btn_clicked)
+
+        self.cancel_btn = QtWidgets.QPushButton("Cancelar")
+        self.cancel_btn.setToolTip("Descartar alterações e fechar")
+        self.cancel_btn.clicked.connect(self.close)
 
         layout.addWidget(self.crs_lbl, 0, 0, 1, 11)
         layout.addWidget(self.crs_cbx, 1, 0, 1, 11)
@@ -358,8 +370,8 @@ class CRSSettingsWindow(QtWidgets.QMainWindow):
         layout.addWidget(self.x_icn, 4, 0, 1, 1)
         layout.addWidget(self.x_lbl, 4, 1, 1, 4)
         layout.addWidget(self.x_cbx, 4, 4, 1, 7)
-        layout.addWidget(self.cancel_btn, 5, 9, 1, 1)
-        layout.addWidget(self.ok_btn, 5, 10, 1, 1)
+        layout.addWidget(self.ok_btn, 5, 7, 1, 2)
+        layout.addWidget(self.cancel_btn, 5, 9, 1, 2)
 
         widget = QtWidgets.QWidget(self)
         widget.setLayout(layout)
@@ -432,8 +444,14 @@ class CRSSettingsWindow(QtWidgets.QMainWindow):
             self.controller.set_model_attribute("y_column", y)
             self.controller.set_model_attribute("x_column", x)
 
+            self.controller.build_gdf()
+
+            projected_crs = self.controller.get_model_attribute("gdf").crs.is_projected
+
             self.parent.reproject_btn.setEnabled(True)
             self.parent.save_layer_btn.setEnabled(True)
+            self.parent.map_preview_btn.setEnabled(True)
+            self.parent.organize_pictures_btn.setEnabled(projected_crs)
 
             self.close()
         except Exception as exception:
@@ -469,28 +487,20 @@ class ReprojectWindow(QtWidgets.QMainWindow):
         self.output_crs_cbx.setMaximumHeight(23)
         self.output_crs_cbx.currentTextChanged.connect(self.output_crs_changed)
 
-        self.cancel_btn = QtWidgets.QToolButton()
-        self.cancel_btn.setIcon(QtGui.QIcon("icons/cancel.png"))
-        self.cancel_btn.setToolTip("Descartar alterações e fechar")
-        self.cancel_btn.setStyleSheet("qproperty-iconSize: 22px 22px;")
-        self.cancel_btn.setMinimumSize(30, 30)
-        self.cancel_btn.setMaximumSize(30, 30)
-        self.cancel_btn.clicked.connect(self.close)
-
-        self.ok_btn = QtWidgets.QToolButton()
-        self.ok_btn.setIcon(QtGui.QIcon("icons/ok.png"))
+        self.ok_btn = QtWidgets.QPushButton("OK")
         self.ok_btn.setToolTip("Salvar e fechar")
-        self.ok_btn.setStyleSheet("qproperty-iconSize: 22px 22px;")
-        self.ok_btn.setMinimumSize(30, 30)
-        self.ok_btn.setMaximumSize(30, 30)
         self.ok_btn.clicked.connect(self.ok_btn_clicked)
+
+        self.cancel_btn = QtWidgets.QPushButton("Cancelar")
+        self.cancel_btn.setToolTip("Descartar alterações e fechar")
+        self.cancel_btn.clicked.connect(self.close)
 
         layout.addWidget(self.input_crs_lbl, 0, 0, 1, 10)
         layout.addWidget(self.input_crs_edt, 1, 0, 1, 10)
         layout.addWidget(self.output_crs_lbl, 2, 0, 1, 10)
         layout.addWidget(self.output_crs_cbx, 3, 0, 1, 10)
-        layout.addWidget(self.cancel_btn, 4, 8, 1, 1)
-        layout.addWidget(self.ok_btn, 4, 9, 1, 1)
+        layout.addWidget(self.ok_btn, 4, 6, 1, 2)
+        layout.addWidget(self.cancel_btn, 4, 8, 1, 2)
 
         widget = QtWidgets.QWidget(self)
         widget.setLayout(layout)
@@ -526,6 +536,7 @@ class MapWindow(QtWidgets.QMainWindow):
         super(MapWindow, self).__init__(parent)
 
         self.gdf = gdf
+        self.parent = parent
 
         self.setWindowTitle("Mapa")
         self.setWindowIcon(QtGui.QIcon('icons/globe.png'))
@@ -594,6 +605,91 @@ class MapWindow(QtWidgets.QMainWindow):
         return webmap
 
 
+class OrganizePicturesWindow(QtWidgets.QMainWindow):
+    def __init__(self, parent, controller):
+        super(OrganizePicturesWindow, self).__init__(parent)
+
+        self.parent = parent
+        self.controller = controller
+
+        self.setWindowTitle("Organizar fotos por ponto")
+        self.setWindowIcon(QtGui.QIcon('icons/globe.png'))
+        self.setMinimumSize(350, 150)
+
+        self.directory_lbl = QtWidgets.QLabel("Diretório contendo as fotos:")
+
+        self.directory_edt = QtWidgets.QLineEdit("")
+        self.directory_edt.setReadOnly(True)
+        self.directory_edt.setMinimumHeight(22)
+        self.directory_edt.setMaximumHeight(22)
+
+        self.select_directory_btn = QtWidgets.QToolButton()
+        self.select_directory_btn.setToolTip("Selecionar diretório de fotos")
+        self.select_directory_btn.setIcon(QtGui.QIcon("icons/add_folder.png"))
+        self.select_directory_btn.setStyleSheet("qproperty-iconSize: 18px 18px;")
+        self.select_directory_btn.setMinimumSize(22, 22)
+        self.select_directory_btn.setMaximumSize(22, 22)
+        self.select_directory_btn.clicked.connect(self.select_directory_btn_clicked)
+
+        self.field_lbl = QtWidgets.QLabel("Rótulos dos pontos:")
+
+        self.field_cmb = QtWidgets.QComboBox()
+        self.field_cmb.setMinimumHeight(22)
+        self.field_cmb.setMaximumHeight(22)
+        self.field_cmb.addItems(self.controller.get_df_columns())
+
+        self.max_distance_lbl = QtWidgets.QLabel("Distância máxima da foto ao ponto (m):")
+
+        self.max_distance_spn = QtWidgets.QSpinBox()
+        self.max_distance_spn.setRange(0, 10000)
+        self.max_distance_spn.setValue(50)
+
+        self.ok_btn = QtWidgets.QPushButton("OK")
+        self.ok_btn.setToolTip("Organizar fotos")
+        self.ok_btn.clicked.connect(self.ok_btn_clicked)
+
+        self.cancel_btn = QtWidgets.QPushButton("Cancelar")
+        self.cancel_btn.setToolTip("Cancelar")
+        self.cancel_btn.clicked.connect(self.close)
+
+        layout = QtWidgets.QGridLayout()
+        layout.addWidget(self.directory_lbl, 0, 0, 1, 8)
+        layout.addWidget(self.directory_edt, 1, 0, 1, 7)
+        layout.addWidget(self.select_directory_btn, 1, 7, 1, 1)
+        layout.addWidget(self.field_lbl, 2, 0, 1, 8)
+        layout.addWidget(self.field_cmb, 3, 0, 1, 8)
+        layout.addWidget(self.max_distance_lbl, 4, 0, 1, 6)
+        layout.addWidget(self.max_distance_spn, 4, 6, 1, 2)
+        layout.addWidget(self.ok_btn, 5, 4, 1, 2)
+        layout.addWidget(self.cancel_btn, 5, 6, 1, 2)
+
+        widget = QtWidgets.QWidget()
+        widget.setLayout(layout)
+        self.setCentralWidget(widget)
+
+    def select_directory_btn_clicked(self):
+        try:
+            self.directory_edt.setText(show_file_dialog("Selecione o diretório das fotos", None, "directory", self))
+        except Exception as exception:
+            show_popup(f"Não foi possível abrir a pasta selecionada.\n\nMotivo: {exception}", "error")
+
+    def ok_btn_clicked(self):
+        try:
+            pictures_directory = self.directory_edt.text()
+            label_field = self.field_cmb.currentText()
+            max_distance = self.max_distance_spn.value()
+
+            self.controller.organize_pictures_by_point(pictures_directory, label_field, max_distance)
+
+            show_popup("Fotos organizadas com sucesso! Foram criadas subpastas para cada ponto. Fotos sem coordenadas "
+                       "ou fora da distância máxima até o ponto mais próximo foram colocadas na pasta \"nan\".\n\n"
+                       "Obs: O resultado pode variar com a precisão das coordenadas armazenadas nas fotos.")
+
+            self.close()
+        except Exception as exception:
+            show_popup(f"Não foi possível organizar as fotos.\n\nMotivo: {exception}", "error")
+
+
 def show_popup(message: str, msg_type: str = "notification"):
     """
     Exibe uma mensagem em popup.
@@ -616,19 +712,23 @@ def show_popup(message: str, msg_type: str = "notification"):
     popup.exec()
 
 
-def show_file_dialog(caption: str, extension_filter: str, mode: str = "open", parent: QtWidgets.QMainWindow = None) -> str:
+def show_file_dialog(caption: str, extension_filter: str|None = None, mode: str = "open",
+                     parent: QtWidgets.QMainWindow = None) -> str | list[str]:
     """
     Exibe um diálogo de abertura/salvamento de arquivo.
     :param caption: Título do diálogo.
     :param extension_filter: Filtro de extensões de arquivo.
-    :param mode: "open" ou "save".
+    :param mode: "open", "save" ou "directory".
     :param parent: Janela pai.
     :return: Caminho completo do arquivo (str).
     """
     if mode == "open":
         file_name, file_type = QtWidgets.QFileDialog.getOpenFileName(parent, caption=caption, filter=extension_filter)
-    else:
+    elif mode == "save":
         file_name, file_type = QtWidgets.QFileDialog.getSaveFileName(parent, caption=caption, filter=extension_filter)
+    else:
+        directory = QtWidgets.QFileDialog.getExistingDirectory(parent, caption=caption)
+        return directory
 
     return file_name
 

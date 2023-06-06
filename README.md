@@ -16,6 +16,7 @@
 - Reprojeção das coordenadas entre SRCs.
 - Exporta dados nos formatos GeoPackage, Shapefile e GeoJSON.
 - Pré-visualiza dados exportados em um mapa interativo.
+- Organiza fotos tiradas em campo por ponto mais próximo.
 
 ## Instruções de uso
 Em breve...

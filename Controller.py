@@ -8,8 +8,11 @@ import csv
 import pandas
 import collections
 import geopandas
+import os
+import exif
 
 from PyQt6 import QtGui
+from shapely.geometry import Point
 
 from ViewController import show_popup, show_file_dialog, show_selection_dialog, show_input_dialog, show_wait_cursor
 from Model import crs_dict, GeographicTable
@@ -408,3 +411,81 @@ class MainController:
         if adapted_columns:
             show_popup(f"As seguintes colunas tinham tipos de dado não suportados pelo formato escolhido e, portanto, "
                        f"foram convertidas para string durante a exportação:\n\n{', '.join(adapted_columns)}")
+
+    def organize_pictures_by_point(self, directory: str, label_field: str, max_distance: int):
+        file_names = os.listdir(directory)
+
+        supported_formats = (".jpg", "jpeg", ".png", ".tif", "tiff", "webp", ".gif", ".bmp", "avif")
+
+        file_paths = [f"{directory}/{file}" for file in file_names
+                      if os.path.isfile(f"{directory}/{file}")
+                      and file.lower()[-4:] in supported_formats]
+
+        if not file_paths:
+            raise Exception(f"Diretório não contém imagens (formatos suportados: JPG, PNG, TIF, WEBP, GIF, BMP e AVIF).")
+
+        points = self.get_model_attribute("gdf")
+
+        pic_points = self.assign_pictures_to_points(file_paths, points, label_field, max_distance)
+        self.move_pictures_to_folders(file_paths, pic_points, directory)
+
+    def assign_pictures_to_points(self, file_paths: list[str], points: geopandas.GeoDataFrame, label_field: str,
+                                  max_distance: int) -> list[str]:
+        names, geometries = [], []
+        for path in file_paths:
+            names.append(path.split("/")[-1])
+            lon_lat = self.get_img_coordinates(path)
+            try:
+                geometries.append(Point(lon_lat))
+            except TypeError:
+                geometries.append(None)
+
+        img_dict = {"image": names, "geometry": geometries}
+        pictures = geopandas.GeoDataFrame(img_dict, crs="EPSG:4326", geometry=img_dict["geometry"]).to_crs(points.crs)
+
+        pictures = pictures.sjoin_nearest(points, how="left", max_distance=max_distance, distance_col="distance")
+
+        return list(pictures[label_field])
+
+    def get_img_coordinates(self, image_path: str):
+        def tuple_to_dd(coords: tuple, ref: str):
+            dd = coords[0] + coords[1] / 60 + coords[2] / 3600
+            if ref == "S" or ref == 'W':
+                dd = -dd
+            return dd
+
+        """if not os.path.isfile(image_path):
+            return None"""
+
+        with open(image_path, 'rb') as src:
+            """try:"""
+            img = exif.Image(src)
+            """except plum.exceptions.UnpackError:  # Esse erro acontece quando o arquivo não é uma imagem
+                return None"""
+
+        if not img.has_exif:
+            return None
+
+        try:
+            lat, lat_ref = img.gps_latitude, img.gps_latitude_ref
+            lon, lon_ref = img.gps_longitude, img.gps_longitude_ref
+            coordinates = (tuple_to_dd(lon, lon_ref), tuple_to_dd(lat, lat_ref))
+        except AttributeError:
+            return None
+
+        return coordinates
+
+    def move_pictures_to_folders(self, file_paths: list[str], picture_points: list[str], folder_path: str):
+        for src_path, point in zip(file_paths, picture_points, strict=True):
+            if not os.path.isfile(src_path):
+                continue
+
+            image_name = src_path.split("/")[-1]
+
+            directory = f"{folder_path}/{point}"
+            if not os.path.isdir(directory):
+                os.makedirs(directory)
+
+            dest_path = f"{directory}/{image_name}"
+
+            os.rename(src_path, dest_path)
