@@ -137,6 +137,10 @@ class ListRow(QtWidgets.QWidget):
             self.dtype_cbx.addItems(DTYPES_DICT.keys())
             self.dtype_cbx.setCurrentText(get_dtype_key(self.dtype))
 
+            self.context_menu = QtWidgets.QMenu(self)
+            self.rename_action = self.context_menu.addAction("Renomear")
+            self.delete_action = self.context_menu.addAction("Excluir")
+
     def get_icon(self):
         try:
             if self.dtype == "geometry":
@@ -147,5 +151,8 @@ class ListRow(QtWidgets.QWidget):
         except KeyError:
             img = "icons/unknown"
         return QtGui.QIcon(img)
+
+    def contextMenuEvent(self, event):
+        self.context_menu.exec(event.globalPos())
 
 # ||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||

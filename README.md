@@ -8,16 +8,6 @@
   <p>
 </div>
 
-## Features
-- Entrada de dados nos formatos CSV, XLSX, XLSM e ODS.
-- Mescla planilhas de um mesmo arquivo utilizando uma coluna em comum.
-- Definição/conversão dos tipos de dados das colunas (string, float, integer, etc.).
-- Definição do Sistema de Referência de Coordenadas (SRC).
-- Reprojeção das coordenadas entre SRCs.
-- Exporta dados nos formatos GeoPackage, Shapefile e GeoJSON.
-- Pré-visualiza dados exportados em um mapa interativo.
-- Organiza fotos tiradas em campo por ponto mais próximo.
-
 ## Instruções de uso
 Em breve...
 

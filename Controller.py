@@ -41,10 +41,10 @@ class UIController:
                 mode="open", parent=self.view
             )
 
-            toggle_wait_cursor(True)
-
             if path == "":
                 return
+
+            toggle_wait_cursor(True)
 
             sheets = None
 
@@ -63,7 +63,9 @@ class UIController:
 
         except Exception as error:
             toggle_wait_cursor(False)
-            show_popup(f"ERRO! {error} (import_button_clicked)", "error")
+            ic(error)
+            show_popup(f"Ops! Ocorreu um erro ao abrir o arquivo.", "error",
+                       f"Descrição do erro: {error}\n\nContexto: import_button_clicked()")
 
     def setup_import_screen(self, sheet_selection: bool = True, sheets: list | None = None):
         # Desconecta os componentes para poder atualizar sem dar trigger nas funções
@@ -85,7 +87,7 @@ class UIController:
             self.view.crs_cbx.addItems(sorted(CRS_DICT))
             self.view.crs_cbx.setCurrentText("SIRGAS 2000 (EPSG:4674)")
         except Exception as error:
-            print(f"{error.__class__}: {error}")
+            ic(error)
 
         self.fill_xy_combos()
 
@@ -135,7 +137,9 @@ class UIController:
             self.check_if_selected_xy_is_valid()
         except Exception as error:
             toggle_wait_cursor(False)
-            show_popup(f"ERRO! {error} (sheet_selected)", "error")
+            ic(error)
+            show_popup(f"Ops! Ocorreu um erro no funcionamento do aplicativo.", "error",
+                       f"Descrição do erro: {error}\n\nContexto: sheet_selected()")
 
     def crs_selected(self):
         try:
@@ -145,7 +149,9 @@ class UIController:
             toggle_wait_cursor(False)
         except Exception as error:
             toggle_wait_cursor(False)
-            show_popup(f"ERRO! {error} (crs_selected)", "error")
+            ic(error)
+            show_popup(f"Ops! Ocorreu um erro no funcionamento do aplicativo.", "error",
+                       f"Descrição do erro: {error}\n\nContexto: crs_selected()")
 
     def import_ok_button_clicked(self):
         try:
@@ -167,9 +173,11 @@ class UIController:
             toggle_wait_cursor(False)
         except Exception as error:
             toggle_wait_cursor(False)
-            show_popup(f"ERRO! {error} (ok_button_clicked)", "error")
+            ic(error)
+            show_popup(f"Ops! Ocorreu um erro no funcionamento do aplicativo.", "error",
+                       f"Descrição do erro: {error}\n\nContexto: import_ok_button_clicked()")
 
-    def update_column_list(self):
+    def update_column_list(self, current_row: int = -1):
         try:
             toggle_wait_cursor(True)
 
@@ -185,6 +193,12 @@ class UIController:
                 widget = ListRow(column_name, str(column_type))
                 widget.dtype_cbx.currentTextChanged.connect(lambda dtype_change, x=row: self.column_dtype_changed(x))
 
+                try:
+                    widget.rename_action.triggered.connect(self.rename_column_action_triggered)
+                    widget.delete_action.triggered.connect(self.delete_column_action_triggered)
+                except AttributeError:
+                    pass
+
                 if str(column_type) == "geometry":
                     widget.setEnabled(False)
 
@@ -199,10 +213,13 @@ class UIController:
                 self.view.columns_list.setItemWidget(item, widget)
                 row += 1
 
+            self.view.columns_list.setCurrentRow(current_row)
             toggle_wait_cursor(False)
         except Exception as error:
             toggle_wait_cursor(False)
-            show_popup(f"ERRO! {error} (update_column_list)", "error")
+            ic(error)
+            show_popup(f"Ops! Ocorreu um erro ao atualizar a lista de colunas.", "error",
+                       f"Descrição do erro: {error}\n\nContexto: update_column_list()")
 
     def column_dtype_changed(self, row: int):
         try:
@@ -238,12 +255,14 @@ class UIController:
                 self.model.change_column_dtype(column, target_dtype)
 
             self.dtypes_list[row] = target_dtype
+            self.update_column_list(row)
             toggle_wait_cursor(False)
         except Exception as error:
+            self.update_column_list(row)
             toggle_wait_cursor(False)
-            show_popup(f"ERRO! {error} (column_dtype_changed)", "error")
-
-        self.update_column_list()
+            ic(error)
+            show_popup(f"Ops! Não foi possível converter o tipo de dado da coluna.", "error",
+                       f"Descrição do erro: {error}\n\nContexto: column_dtype_changed()")
 
     def merge_button_clicked(self):
         try:
@@ -254,7 +273,9 @@ class UIController:
             self.view.merge_ok_btn.clicked.connect(self.merge_ok_btn_clicked)
 
         except Exception as error:
-            show_popup(f"ERRO! {error} (merge_button_clicked)", "error")
+            ic(error)
+            show_popup(f"Ops! Ocorreu um erro no funcionamento do aplicativo.", "error",
+                       f"Descrição do erro: {error}\n\nContexto: merge_button_clicked()")
 
     def merge_ok_btn_clicked(self):
         try:
@@ -267,19 +288,25 @@ class UIController:
             self.update_column_list()
             self.view.switch_stack(0)
         except Exception as error:
-            show_popup(f"ERRO! {error} (merge_ok_button_clicked)", "error")
+            ic(error)
+            show_popup(f"Ops! Não foi possível mesclar as planilhas.", "error",
+                       f"Descrição do erro: {error}\n\nContexto: merge_ok_button_clicked()")
 
     def reproject_button_clicked(self):
         try:
             current_crs = self.model.gdf.crs.name
             target_crs, ok_clicked = show_selection_dialog(message=f"SRC atual: {current_crs}\n\nSelecione o SRC de destino:", items=sorted(CRS_DICT),
                                                     title="Reprojetar pontos", parent=self.view)
-            if ok_clicked:
-                self.model.reproject_geodataframe(target_crs)
-                show_popup("Pontos reprojetados com sucesso!\n\n"
-                           "Obs: As coordenadas contidas na tabela não foram alteradas.")
+            if not ok_clicked:
+                return
+
+            self.model.reproject_geodataframe(target_crs)
+            show_popup("Pontos reprojetados com sucesso!\n\n"
+                       "Obs: As coordenadas contidas na tabela não foram alteradas.")
         except Exception as error:
-            show_popup(f"ERRO! {error} (reproject_button_clicked)", "error")
+            ic(error)
+            show_popup(f"Ops! Não foi possível reprojetar os pontos.", "error",
+                       f"Descrição do erro: {error}\n\nContexto: reproject_button_clicked()")
 
     def export_button_clicked(self):
         try:
@@ -305,7 +332,50 @@ class UIController:
             show_popup("Pontos exportados com sucesso!")
 
         except Exception as error:
-            show_popup(f"ERRO! {error} (export_button_clicked)", "error")
+            ic(error)
+            show_popup(f"Ops! Não foi possível exportar.", "error",
+                       f"Descrição do erro: {error}\n\nContexto: import_button_clicked()")
+
+    def rename_column_action_triggered(self):
+        try:
+            row = self.view.columns_list.currentRow()
+            column = self.column_list_widgets[row].field
+
+            new_name, ok_clicked = show_input_dialog("Insira um novo nome para a coluna:", "Renomear coluna", column, self.view)
+
+            if not ok_clicked:
+                return
+
+            if new_name in self.model.gdf.columns:
+                raise Exception("O nome inserido já é utilizado por outra coluna do GeoDataFrame.")
+
+            self.model.gdf.rename(columns={column: new_name}, inplace=True)
+            self.column_list_widgets[row].field = new_name
+            self.update_column_list(row)
+
+        except Exception as error:
+            ic(error)
+            show_popup(f"Ops! Não foi possível renomear a coluna.", "error",
+                       f"Descrição do erro: {error}\n\nContexto: rename_column_action_triggered()")
+
+    def delete_column_action_triggered(self):
+        try:
+            row = self.view.columns_list.currentRow()
+            column = self.column_list_widgets[row].field
+
+            yes_or_no = show_question_dialog(f"Excluir coluna \"{column}\"?")
+
+            if yes_or_no != QtWidgets.QMessageBox.StandardButton.Yes.value:
+                return
+
+            self.model.gdf.drop(columns=[column], inplace=True)
+            self.column_list_widgets.pop(row)
+            self.update_column_list(row)
+
+        except Exception as error:
+            ic(error)
+            show_popup(f"Ops! Não foi possível renomear a coluna.", "error",
+                       f"Descrição do erro: {error}\n\nContexto: rename_column_action_triggered()")
 
 
 def toggle_wait_cursor(activate: bool = True):
@@ -318,3 +388,4 @@ def toggle_wait_cursor(activate: bool = True):
         QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.CursorShape.WaitCursor)
     else:
         QtWidgets.QApplication.restoreOverrideCursor()
+

@@ -7,7 +7,6 @@ import csv
 import pandas
 import geopandas
 import pyproj
-import warnings
 
 from icecream import ic
 
@@ -25,7 +24,7 @@ del crs_info, key
 
 DTYPES_DICT = {
     "String": {
-        "pandas_dtypes": ("object", "category"),
+        "pandas_dtypes": ("string", "object", "category"),
         "icon": "icons/string.png"
     },
     "Integer": {
@@ -266,7 +265,7 @@ class DataHandler:
         target_crs = pyproj.CRS.from_authority(CRS_DICT[target_crs_key]["auth_name"], CRS_DICT[target_crs_key]["code"])
         self.gdf = self.gdf.to_crs(crs=target_crs)
 
-    def save_to_geospatial_file(self, path: str, layer_name: str = None):
+    def save_to_geospatial_file(self, path: str, layer_name: str = "pontos"):
         """
         Exporta o GeoDataFrame aramazenado no atributo "gdf" da classe para um arquivo Shapefile, GeoJson ou Geopackage.
         :param path: Caminho do arquivo de saída.
@@ -282,22 +281,46 @@ class DataHandler:
         self.gdf.to_file(path, layer_name=layer_name)
 
 
-def get_dtype_key(value):
+def get_dtype_key(value: str) -> str | None:
+    """
+    Função que retorna a chave de um tipo de dado presente no DTYPES_DICT com base em seu pandas dtype.
+    Ex: uint8 --> Integer; float64 --> Float; object --> String.
+    :param value: pandas dtype string alias.
+    :return: Chave do tipo de dado ou None.
+    """
     for dt_key, inner_dict in DTYPES_DICT.items():
         if value in inner_dict["pandas_dtypes"]:
             return dt_key
     return None
 
+
 # TESTES ||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*-
 if __name__ == "__main__":
-    ic.configureOutput(prefix="LOG | ", includeContext=False)
-    warnings.simplefilter("ignore", category=UserWarning)
+    ic.configureOutput(prefix="LOG| ", includeContext=False)
+
+    # PARÂMETROS DE TESTE
+    input_file, sheet = "exemplo_dados_entrada.xlsx", 0
+    crs, x, y = "SIRGAS 2000 (EPSG:4674)", "longitude", "latitude"
+    merge_column = "codigo"
+    column_to_change, target_dtype = "altitude", "Integer"
+    target_crs = "SIRGAS 2000 / UTM zone 22S (EPSG:31982)"
+    output_file = "teste.geojson"
 
     handler = DataHandler()
 
-    input_file = "exemplo_preenchido_2.xlsx"
-
-    handler.read_excel_file(input_file)
-    handler.read_excel_sheet(0)
-    conversion = handler.change_column_dtype("Easting", "uint8")
-    ic(handler.gdf["Easting"])
+    # LÊ A PRIMEIRA PLANILHA SELECIONADA E DEFINE A GEOMETRIA
+    ic(handler.read_excel_file(input_file))
+    ic(handler.read_excel_sheet(sheet))
+    ic(handler.set_geodataframe_geometry(crs, x, y))
+    ic(handler.gdf.dtypes)
+    # MESCLA AS PLANILHAS DO ARQUIVO
+    ic(handler.merge_sheets(merge_column))
+    ic(handler.gdf.dtypes)
+    # ALTERA O TIPO DE DADO DE UMA COLUNA
+    ic(handler.change_column_dtype(column_to_change, target_dtype))
+    ic(handler.gdf[column_to_change].dtype)
+    # REPROJETA PARA OUTRO SRC
+    ic(handler.reproject_geodataframe(target_crs))
+    ic(handler.gdf.crs)
+    # EXPORTA UM ARQUIVO VETORIAL
+    ic(handler.save_to_geospatial_file(output_file))

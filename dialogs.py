@@ -6,24 +6,25 @@
 from PyQt6 import QtWidgets, QtGui
 
 
-def show_popup(message: str, msg_type: str = "notification"):
+def show_popup(message: str, msg_type: str = "notification", details: str | None = None):
     """
     Exibe uma mensagem em popup.
     :param message: Conteúdo da popup.
     :param msg_type: "notification" ou "error". Define o ícone a ser exibido.
+    :param details: String contendo informações adicionais.
     :return: Nada.
     """
-    popup_types = {
-        "notification": {"title": "Notificação", "icon": "icons/globe.png"},
-        "error":        {"title": "Erro",        "icon": "icons/error.png"}
-    }
-    title = popup_types[msg_type]["title"]
-    icon = QtGui.QIcon(popup_types[msg_type]["icon"])
+    title = "Erro" if msg_type == "error" else "Notificação"
+    icon = QtGui.QIcon("icons/error.png" if msg_type == "error" else "icons/info.png")
 
     popup = QtWidgets.QMessageBox()
+
     popup.setText(message)
     popup.setWindowTitle(title)
     popup.setWindowIcon(icon)
+
+    if details is not None:
+        popup.setDetailedText(details)
 
     popup.exec()
 
@@ -85,3 +86,23 @@ def show_input_dialog(message: str, title: str = "Inserir", default_text: str = 
     user_input, ok = QtWidgets.QInputDialog.getText(parent, title, message, text=default_text)
 
     return user_input, ok
+
+
+def show_question_dialog(message: str):
+    """
+    Exibe uma mensagem de confirmação.
+    :param message: Conteúdo da popup.
+    :return: Nada.
+    """
+    dialog = QtWidgets.QMessageBox()
+    dialog.setWindowIcon(QtGui.QIcon("icons/unknown.png"))
+    dialog.setWindowTitle("Confirmação")
+    dialog.setText(message)
+    dialog.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No)
+
+    yes_button = dialog.button(QtWidgets.QMessageBox.StandardButton.Yes)
+    yes_button.setText('Sim')
+    no_button = dialog.button(QtWidgets.QMessageBox.StandardButton.No)
+    no_button.setText('Não')
+
+    return dialog.exec()
