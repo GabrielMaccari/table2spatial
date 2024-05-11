@@ -1,0 +1,5 @@
+PyQt6==6.6.0
+pandas==2.1.2
+pyproj==3.6.1
+geopandas==0.14.0
+icecream==2.1.3

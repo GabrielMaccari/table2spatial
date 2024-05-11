@@ -2,23 +2,21 @@
 """
 @author: Gabriel Maccari
 """
+
 import sys
+from PyQt6.QtWidgets import QApplication
+from icecream import ic
 
-from PyQt6 import QtWidgets
+from controller import UIController
 
-from Model import GeographicTable
-from ViewController import AppMainWindow
-from Controller import MainController
+ic.configureOutput(prefix='LOG| ', includeContext=True)
 
 
-class App(QtWidgets.QApplication):
+class App(QApplication):
     def __init__(self, sys_argv):
         super(App, self).__init__(sys_argv)
 
-        self.controller = MainController(GeographicTable)
-        self.view = AppMainWindow(self.controller)
-
-        self.view.show()
+        self.controller = UIController()
 
 
 def main():

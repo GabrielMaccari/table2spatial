@@ -11,6 +11,11 @@ QToolButton {
 QToolButton:hover {
     background-color: #EAEAEA;
 }
+QStackedWidget {
+    background-color: #FBFBFB;
+    border: none;
+    border-radius: 3px;
+}
 QListWidget {
     background-color: #FBFBFB;
     border: none;
@@ -26,6 +31,7 @@ QComboBox {
 QLabel {
     font-family: Calibri;
     font-size: 10.5pt;
+	background-color: None;
 }
 QMenu {
     font-family: Calibri;
