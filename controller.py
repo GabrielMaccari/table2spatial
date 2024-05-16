@@ -2,12 +2,12 @@
 """
 @author: Gabriel Maccari
 """
-from PyQt6 import QtCore
+from PyQt6 import QtCore, QtGui, QtWidgets
 from icecream import ic
 
 from model import DataHandler, CRS_DICT, DATETIME_FORMATS, get_dtype_key
 from view import MainWindow, ListRow, ListWindow
-from dialogs import *
+from dialogs import show_popup, show_file_dialog, show_selection_dialog, show_input_dialog, show_question_dialog
 
 
 class UIController:
@@ -233,21 +233,32 @@ class UIController:
             true_key, false_key, ok_clicked = None, None, True
 
             if target_dtype == "Boolean":
+                uniques = sorted([str(value) for value in self.model.gdf[column].unique()])
+                if "nan" in uniques:
+                    uniques.remove("nan")
                 toggle_wait_cursor(False)
-                true_key, ok_clicked = show_input_dialog("Insira o valor a ser considerado como Verdadeiro:",
-                                                         default_text="Sim", parent=self.view)
+                true_key, ok_clicked = show_selection_dialog(
+                    message="Insira o valor a ser considerado como Verdadeiro:", items=uniques,
+                    title="Conversão para booleano"
+                )
                 if ok_clicked:
-                    false_key, ok_clicked = show_input_dialog("Insira o valor a ser considerado como Falso:",
-                                                              default_text="Não", parent=self.view)
+                    if true_key not in uniques:
+                        raise KeyError("O valor informado não existe na coluna.")
+                    false_key, ok_clicked = show_selection_dialog(
+                        message="Insira o valor a ser considerado como Falso:", items=uniques,
+                        title="Conversão para booleano"
+                    )
                 toggle_wait_cursor(True)
                 if ok_clicked:
+                    if false_key not in uniques:
+                        raise KeyError("O valor informado não existe na coluna.")
                     self.model.change_column_dtype(column, target_dtype, true_key=true_key, false_key=false_key)
 
             elif target_dtype == "Datetime":
                 toggle_wait_cursor(False)
                 datetime_format, ok_clicked = show_selection_dialog(
                     "Selecione o formato de data e hora presente no campo:",
-                    items=DATETIME_FORMATS.keys(), parent=self.view)
+                    items=DATETIME_FORMATS.keys(), allow_edit=False, parent=self.view)
                 if ok_clicked:
                     self.model.change_column_dtype(column, target_dtype, datetime_format=datetime_format)
                 toggle_wait_cursor(True)
@@ -296,8 +307,9 @@ class UIController:
     def reproject_button_clicked(self):
         try:
             current_crs = self.model.gdf.crs.name
-            target_crs, ok_clicked = show_selection_dialog(message=f"SRC atual: {current_crs}\n\nSelecione o SRC de destino:", items=sorted(CRS_DICT),
-                                                    title="Reprojetar pontos", parent=self.view)
+            target_crs, ok_clicked = show_selection_dialog(
+                message=f"SRC atual: {current_crs}\n\nSelecione o SRC de destino:", items=sorted(CRS_DICT),
+                allow_edit=True, title="Reprojetar pontos", parent=self.view)
             if not ok_clicked:
                 return
 
@@ -394,7 +406,7 @@ class UIController:
         except Exception as error:
             ic(error)
             show_popup(f"Ops! Ocorreu um erro ao obter a lista de valores únicos.", "error",
-                       f"Descrição do erro: {error}\n\nContexto: rename_column_action_triggered()")
+                       f"Descrição do erro: {error}\n\nContexto: show_uniques_action_triggered()")
 
 
 def toggle_wait_cursor(activate: bool = True):

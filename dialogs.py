@@ -50,25 +50,21 @@ def show_file_dialog(caption: str, extension_filter: str|None = None, mode: str 
     return file_name
 
 
-def show_selection_dialog(message: str, items: list, selected=0,
+def show_selection_dialog(message: str, items: list, selected=0, allow_edit=False,
                           title="Selecionar opções", parent: QtWidgets.QMainWindow = None) -> (str, bool):
     """
     Exibe um diálogo de seleção de opções.
     :param message: Mensagem ao usuário.
     :param items: Opções para seleção na combobox.
     :param selected: Índice da opção selecionada por padrão.
+    :param allow_edit: Se verdadeiro, o usuário consegue editar os valores na combo box.
     :param title: Título da janela.
     :param parent: Janela pai.
     :return: A opção selecionada e se o botão de OK foi clicado (str, bool).
     """
     dialog = QtWidgets.QInputDialog()
-    combo_box = dialog.findChild(QtWidgets.QComboBox)
-    if combo_box is not None:
-        combo_box.setEditable(True)
-        combo_box.setInsertPolicy(QtWidgets.QComboBox.InsertPolicy.NoInsert)
-        combo_box.completer().setCompletionMode(QtWidgets.QCompleter.CompletionMode.PopupCompletion)
 
-    choice, ok = dialog.getItem(parent, title, message, items, selected)
+    choice, ok = dialog.getItem(parent, title, message, items, selected, allow_edit)
 
     return choice, ok
 
