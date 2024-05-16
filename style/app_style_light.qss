@@ -13,13 +13,13 @@ QToolButton:hover {
 }
 QStackedWidget {
     background-color: #FBFBFB;
-    border: none;
-    border-radius: 3px;
+    border-radius: 4px;
 }
 QListWidget {
     background-color: #FBFBFB;
-    border: none;
-    border-radius: 3px;
+    border: 1px solid;
+    border-color: #e6e6e6;
+    border-radius: 4px;
 }
 QMessageBox {
     background-color: #F3F3F3;
@@ -36,10 +36,13 @@ QLabel {
 QMenu {
     font-family: Calibri;
     font-size: 10pt;
-    background-color: #F9F9F9;
-    border: none;
+    background-color: #FCFCFC;
+    padding: 4px;
+    border-shadow: none;
 }
 QMenu::item:selected {
-    background-color: #EEEEEE;
+    background-color: #F3F3F3;
     color: black;
+    padding: 4px;
+    border-radius: 4px;
 }

@@ -126,10 +126,10 @@ class ListRow(QtWidgets.QWidget):
 
         self.column_lbl = QtWidgets.QLabel(self)
         self.column_lbl.setText(self.field)
-        self.column_lbl.setGeometry(5, 0, 230, 30)
+        self.column_lbl.setGeometry(5, 0, 225, 30)
 
         self.dtype_cbx = QtWidgets.QComboBox(self)
-        self.dtype_cbx.setGeometry(243, 4, 120, 22)
+        self.dtype_cbx.setGeometry(240, 4, 120, 22)
 
         if self.dtype == "geometry":
             self.dtype_cbx.addItems(["Point(X,Y)"])
@@ -138,8 +138,9 @@ class ListRow(QtWidgets.QWidget):
             self.dtype_cbx.setCurrentText(get_dtype_key(self.dtype))
 
             self.context_menu = QtWidgets.QMenu(self)
-            self.rename_action = self.context_menu.addAction("Renomear")
-            self.delete_action = self.context_menu.addAction("Excluir")
+            self.rename_action = self.context_menu.addAction(QtGui.QIcon("icons/rename.png"), "Renomear")
+            self.delete_action = self.context_menu.addAction(QtGui.QIcon("icons/delete.png"), "Excluir")
+            self.show_uniques_action = self.context_menu.addAction(QtGui.QIcon("icons/list.png"), "Listar valores únicos")
 
     def get_icon(self):
         try:
@@ -154,5 +155,42 @@ class ListRow(QtWidgets.QWidget):
 
     def contextMenuEvent(self, event):
         self.context_menu.exec(event.globalPos())
+
+
+class ListWindow(QtWidgets.QMainWindow):
+    def __init__(self, values_list: list[any], has_nan: bool, parent):
+        super(ListWindow, self).__init__(parent)
+
+        self.setWindowTitle('Valores únicos')
+        self.setWindowIcon(QtGui.QIcon('icons/list.png'))
+
+        self.layout = QtWidgets.QVBoxLayout()
+
+        self.widget = QtWidgets.QWidget()
+        self.widget.setLayout(self.layout)
+
+        self.setCentralWidget(self.widget)
+
+        self.list_wgt = QtWidgets.QListWidget(self)
+        self.list_wgt.addItems(values_list)
+        self.layout.addWidget(self.list_wgt)
+
+        if has_nan:
+            self.nan_lbl = QtWidgets.QLabel("Obs: A coluna possui células vazias/nulas.")
+            self.layout.addWidget(self.nan_lbl)
+
+        self.close_button = QtWidgets.QPushButton("Fechar")
+        self.close_button.clicked.connect(self.close)
+        self.layout.addWidget(self.close_button)
+
+        self.show()
+
+        center_window_on_point(self, parent.geometry().center())
+
+
+def center_window_on_point(window, center_point):
+    geometry = window.geometry()
+    geometry.moveCenter(center_point)
+    window.move(geometry.topLeft())
 
 # ||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||
