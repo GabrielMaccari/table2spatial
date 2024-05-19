@@ -1,1 +1,1 @@
-pyinstaller "App.py" --distpath="table2spatial-win64-vx.y.z" --upx-dir="..\upx-4.2.0-win64" --clean --onefile --noconsole --icon="icons\globe.ico" --collect-data=geopandas
+pyinstaller "__main__.py" --distpath="./" --upx-dir="..\upx-4.2.4-win64" --clean --onefile --noconsole --icon="icons\globe.ico" --collect-data=geopandas

@@ -38,7 +38,6 @@ QMenu {
     font-size: 10pt;
     background-color: #FCFCFC;
     padding: 4px;
-    border-shadow: none;
 }
 QMenu::item:selected {
     background-color: #F3F3F3;

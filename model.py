@@ -10,6 +10,8 @@ import pyproj
 
 from icecream import ic
 
+# geopandas.options.io_engine = "pyogrio" #  pyogrio é melhor que fiona, mas não funciona com o pyinstaller
+
 CRS_DICT = {}
 for crs_info in pyproj.database.query_crs_info(pj_types=["GEOGRAPHIC_2D_CRS", "PROJECTED_CRS"]):
     key = f"{crs_info.name} ({crs_info.auth_name}:{crs_info.code})"
@@ -210,7 +212,10 @@ class DataHandler:
 
         # Itera pelo ExcelFile, convertendo as planilhas para DFs, e verifica se cada uma contém a coluna de mescla
         for s in self.excel_file.sheet_names:
-            sheet_df = self.excel_file.parse(sheet_name=s)
+            if s == self.excel_file.sheet_names[0]:
+                sheet_df = pandas.DataFrame(self.gdf).drop(columns=["geometry"])
+            else:
+                sheet_df = self.excel_file.parse(sheet_name=s)
 
             if merge_column in sheet_df.columns:
                 sheets_to_merge.append(s)
@@ -249,11 +254,18 @@ class DataHandler:
         :kwarg datetime_format: O formato de data e hora (necessário apenas ao converter para Datetime)
         :return: Nada
         """
-        if target_dtype_key == "Boolean":
+        if target_dtype_key == "Boolean": # TODO verificar se isso está funcionando certinho
             true, false = kwargs.get("true_key", "Sim"), kwargs.get("false_key", "Não")
+            true = pandas.NA if true == "NULL" else true
+            false = pandas.NA if false == "NULL" else false
             if not self.gdf[column].astype(str).isin((true, false)).all():
                 raise ValueError(f"A coluna deve conter apenas os valores indicados para verdadeiro e falso ({true} e {false}).")
-            self.gdf[column] = self.gdf[column].astype(str).map({true: True, false: False}).astype(bool)
+            if true == "<Nenhum>":
+                self.gdf[column] = self.gdf[column].astype(str).map({true: False, false: False}).astype(bool)
+            elif false == "<Nenhum>":
+                self.gdf[column] = self.gdf[column].astype(str).map({true: True, false: True}).astype(bool)
+            else:
+                self.gdf[column] = self.gdf[column].astype(str).map({true: True, false: False}).astype(bool)
         elif target_dtype_key == "Datetime":
             datetime_format = kwargs.get("datetime_format", "DD-MM-YYYY")
             self.gdf[column] = pandas.to_datetime(self.gdf[column], format=DATETIME_FORMATS[datetime_format], errors="raise")
@@ -283,7 +295,16 @@ class DataHandler:
             if self.gdf[column].dtype in unsupported_dtypes:
                 self.gdf[column] = self.gdf[column].astype(str)
 
-        self.gdf.to_file(path, layer_name=layer_name)
+        if path.endswith(".gpkg"):
+            self.gdf.to_file(filename=path, layer=layer_name, driver="GPKG")
+        elif path.endswith(".csv"):
+            df = pandas.DataFrame(self.gdf)
+            df.to_csv(path, sep=";", decimal=".", index_label="Index")
+        elif path.endswith(".xlsx"):
+            df = pandas.DataFrame(self.gdf)
+            df.to_excel(path, index_label="Index")
+        else:
+            self.gdf.to_file(filename=path)
 
 
 def get_dtype_key(value: str) -> str | None:

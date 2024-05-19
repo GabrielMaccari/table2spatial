@@ -33,7 +33,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.layout.addWidget(self.merge_button, 0, 1, 1, 1)
         self.reproject_button = ToolbarButton(self, "Reprojetar os pontos para outro SRC", "reproject.png")
         self.layout.addWidget(self.reproject_button, 0, 2, 1, 1)
-        self.export_button = ToolbarButton(self, "Exportar como camada vetorial de pontos", "layers.png")
+        self.export_button = ToolbarButton(self, "Exportar como camada vetorial de pontos ou tabela", "layers.png")
         self.layout.addWidget(self.export_button, 0, 3, 1, 1)
 
         # PAGINADOR
@@ -41,7 +41,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.frame_stack.setFixedSize(410, 480)
         self.columns_stack = QtWidgets.QWidget()
         self.import_stack = QtWidgets.QWidget()
-        self.merge_stack = QtWidgets.QWidget()
         self.layout.addWidget(self.frame_stack, 1, 0, 20, 8)
 
         # PAGINADOR → PÁGINA DE COLUNAS
@@ -82,19 +81,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.import_stack_layout.addWidget(self.import_cancel_btn, 8, 1, 1, 1)
         self.import_stack_layout.setRowStretch(9, 1)
 
-        # PAGINADOR → PÁGINA DE MESCLAGEM
-        self.frame_stack.addWidget(self.merge_stack)
-        self.merge_stack_layout = QtWidgets.QGridLayout(self.merge_stack)
-        self.merge_column_lbl = QtWidgets.QLabel("Coluna de mescla", self.merge_stack)
-        self.merge_stack_layout.addWidget(self.merge_column_lbl, 0, 0, 1, 10)
-        self.merge_column_cbx = QtWidgets.QComboBox()
-        self.merge_stack_layout.addWidget(self.merge_column_cbx, 1, 0, 1, 10)
-        self.merge_ok_btn = QtWidgets.QPushButton("OK", self.merge_stack)
-        self.merge_stack_layout.addWidget(self.merge_ok_btn, 2, 0, 1, 1)
-        self.merge_cancel_btn = QtWidgets.QPushButton("Cancelar", self.merge_stack)
-        self.merge_stack_layout.addWidget(self.merge_cancel_btn, 2, 1, 1, 1)
-        self.merge_stack_layout.setRowStretch(9, 1)
-
         # RÓTULO INFERIOR
         self.copyright_label = QtWidgets.QLabel("©2024 Gabriel Maccari / Icons by www.icons8.com")
         self.copyright_label.setStyleSheet("font-size: 8pt")
@@ -102,7 +88,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Conexões dos botões de cancelar de cada página
         self.import_cancel_btn.clicked.connect(self.switch_stack)
-        self.merge_cancel_btn.clicked.connect(self.switch_stack)
 
     def switch_stack(self, stack_index: int = 0):
         self.frame_stack.setCurrentIndex(stack_index)

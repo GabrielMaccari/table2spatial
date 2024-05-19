@@ -236,6 +236,8 @@ class UIController:
                 uniques = sorted([str(value) for value in self.model.gdf[column].unique()])
                 if "nan" in uniques:
                     uniques.remove("nan")
+                uniques.append("<Células vazias>")
+                uniques.append("<Nenhum>")
                 toggle_wait_cursor(False)
                 true_key, ok_clicked = show_selection_dialog(
                     message="Insira o valor a ser considerado como Verdadeiro:", items=uniques,
@@ -278,31 +280,24 @@ class UIController:
 
     def merge_button_clicked(self):
         try:
-            self.view.switch_stack(2)
+            """self.view.switch_stack(2)
             self.view.merge_column_cbx.clear()
             self.view.merge_column_cbx.addItems(self.model.gdf.columns)
+            self.view.merge_ok_btn.clicked.connect(self.merge_ok_btn_clicked)"""
+            merge_column, ok_clicked = show_selection_dialog(message="Selecione a coluna identificadora para a mescla:",
+                                                             items=self.model.gdf.columns, title="Mesclar planilhas",
+                                                             parent=self.view)
+            if ok_clicked:
+                merged_sheets, skipped_sheets = self.model.merge_sheets(merge_column)
+                show_popup(f"As seguintes planilhas foram mescladas com sucesso usando a coluna {merge_column}: "
+                           f"{', '.join(merged_sheets)}.\nAs demais planilhas do arquivo foram ignoradas pois não contêm a "
+                           f"coluna de mescla em questão.")
+                self.update_column_list()
 
-            self.view.merge_ok_btn.clicked.connect(self.merge_ok_btn_clicked)
-
-        except Exception as error:
-            ic(error)
-            show_popup(f"Ops! Ocorreu um erro no funcionamento do aplicativo.", "error",
-                       f"Descrição do erro: {error}\n\nContexto: merge_button_clicked()")
-
-    def merge_ok_btn_clicked(self):
-        try:
-            self.view.merge_ok_btn.disconnect()  # Por algum motivo estava dando trigger mais de uma vez nessa função
-            merge_column = self.view.merge_column_cbx.currentText()
-            merged_sheets, skipped_sheets = self.model.merge_sheets(merge_column)
-            show_popup(f"As seguintes planilhas foram mescladas com sucesso usando a coluna {merge_column}: "
-                       f"{", ".join(merged_sheets)}.\nAs demais planilhas do arquivo foram ignoradas pois não contêm a "
-                       f"coluna de mescla em questão.")
-            self.update_column_list()
-            self.view.switch_stack(0)
         except Exception as error:
             ic(error)
             show_popup(f"Ops! Não foi possível mesclar as planilhas.", "error",
-                       f"Descrição do erro: {error}\n\nContexto: merge_ok_button_clicked()")
+                       f"Descrição do erro: {error}\n\nContexto: merge_button_clicked()")
 
     def reproject_button_clicked(self):
         try:
@@ -324,11 +319,13 @@ class UIController:
     def export_button_clicked(self):
         try:
             file_name = show_file_dialog(
-                caption="Salvar arquivo vetorial", mode="save", parent=self.view,
-                extension_filter="Formatos suportados (*.gpkg *.geojson *.shp);;"
+                caption="Salvar arquivo", mode="save", parent=self.view,
+                extension_filter="Formatos suportados (*.gpkg *.geojson *.shp *.csv *.xlsx);;"
                                  "Geopackage (*.gpkg);;"
                                  "GeoJSON (*.geojson);;"
-                                 "Shapefile (*.shp)"
+                                 "Shapefile (*.shp);;"
+                                 "Comma Separated Values (*.csv);;"
+                                 "Pasta de Trabalho do Excel (*.xlsx)"
             )
 
             if file_name == "":
@@ -347,7 +344,7 @@ class UIController:
         except Exception as error:
             ic(error)
             show_popup(f"Ops! Não foi possível exportar.", "error",
-                       f"Descrição do erro: {error}\n\nContexto: import_button_clicked()")
+                       f"Descrição do erro: {error}\n\nContexto: export_button_clicked()")
 
     def rename_column_action_triggered(self):
         try:
