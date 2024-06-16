@@ -51,35 +51,48 @@ class MainWindow(QtWidgets.QMainWindow):
         self.columns_list.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         # PAGINADOR → PÁGINA DE IMPORTAÇÃO
+        row = 0
         self.frame_stack.addWidget(self.import_stack)
         self.import_stack_layout = QtWidgets.QGridLayout(self.import_stack)
         self.sheet_lbl = QtWidgets.QLabel("Planilha:", self.import_stack)
-        self.import_stack_layout.addWidget(self.sheet_lbl, 0, 0, 1, 10)
+        self.import_stack_layout.addWidget(self.sheet_lbl, row, 0, 1, 20)
+        row += 1
         self.sheet_cbx = QtWidgets.QComboBox(self.import_stack)
-        self.import_stack_layout.addWidget(self.sheet_cbx, 1, 0, 1, 10)
+        self.import_stack_layout.addWidget(self.sheet_cbx, row, 0, 1, 20)
+        row += 1
         self.crs_lbl = QtWidgets.QLabel("SRC:", self.import_stack)
-        self.import_stack_layout.addWidget(self.crs_lbl, 2, 0, 1, 10)
+        self.import_stack_layout.addWidget(self.crs_lbl, row, 0, 1, 20)
+        row += 1
         self.crs_cbx = QtWidgets.QComboBox(self.import_stack)
-        self.import_stack_layout.addWidget(self.crs_cbx, 3, 0, 1, 10)
-        self.x_lbl = QtWidgets.QLabel("Campo das coordenadas X:", self.import_stack)
-        self.import_stack_layout.addWidget(self.x_lbl, 4, 0, 1, 10)
+        self.import_stack_layout.addWidget(self.crs_cbx, row, 0, 1, 20)
+        row += 1
+        self.coords_lbl = QtWidgets.QLabel("Coordenadas:", self.import_stack)
+        self.import_stack_layout.addWidget(self.coords_lbl, row, 0, 1, 20)
+        row += 1
+        self.dms_chk = QtWidgets.QCheckBox("Formato GMS (GG°MM'SS.sss\")", self.import_stack)
+        self.import_stack_layout.addWidget(self.dms_chk, row, 0, 1, 20)
+        row += 1
+        self.x_lbl = QtWidgets.QLabel("X:", self.import_stack)
+        self.import_stack_layout.addWidget(self.x_lbl, row, 0, 1, 1)
         self.x_cbx = QtWidgets.QComboBox(self.import_stack)
-        self.import_stack_layout.addWidget(self.x_cbx, 5, 0, 1, 9)
+        self.import_stack_layout.addWidget(self.x_cbx, row, 1, 1, 18)
         self.x_ok_icon = QtWidgets.QPushButton(icon=QtGui.QIcon("icons/circle.png"))
         self.x_ok_icon.setFlat(True)
-        self.import_stack_layout.addWidget(self.x_ok_icon, 5, 9, 1, 1)
-        self.y_lbl = QtWidgets.QLabel("Campo das coordenadas Y:", self.import_stack)
-        self.import_stack_layout.addWidget(self.y_lbl, 6, 0, 1, 10)
+        self.import_stack_layout.addWidget(self.x_ok_icon, row, 19, 1, 1)
+        row += 1
+        self.y_lbl = QtWidgets.QLabel("Y:", self.import_stack)
+        self.import_stack_layout.addWidget(self.y_lbl, row, 0, 1, 1)
         self.y_cbx = QtWidgets.QComboBox(self.import_stack)
-        self.import_stack_layout.addWidget(self.y_cbx, 7, 0, 1, 9)
+        self.import_stack_layout.addWidget(self.y_cbx, row, 1, 1, 18)
         self.y_ok_icon = QtWidgets.QPushButton(icon=QtGui.QIcon("icons/circle.png"))
         self.y_ok_icon.setFlat(True)
-        self.import_stack_layout.addWidget(self.y_ok_icon, 7, 9, 1, 1)
+        self.import_stack_layout.addWidget(self.y_ok_icon, row, 19, 1, 1)
+        row += 1
         self.import_ok_btn = QtWidgets.QPushButton("OK", self.import_stack)
-        self.import_stack_layout.addWidget(self.import_ok_btn, 8, 0, 1, 1)
+        self.import_stack_layout.addWidget(self.import_ok_btn, row, 0, 1, 4)
         self.import_cancel_btn = QtWidgets.QPushButton("Cancelar", self.import_stack)
-        self.import_stack_layout.addWidget(self.import_cancel_btn, 8, 1, 1, 1)
-        self.import_stack_layout.setRowStretch(9, 1)
+        self.import_stack_layout.addWidget(self.import_cancel_btn, row, 4, 1, 4)
+        self.import_stack_layout.setRowStretch(row+1, 1)
 
         # RÓTULO INFERIOR
         self.copyright_label = QtWidgets.QLabel("©2024 Gabriel Maccari / Icons by www.icons8.com")

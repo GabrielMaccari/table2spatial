@@ -24,7 +24,6 @@ class UIController:
         self.view.merge_button.clicked.connect(self.merge_button_clicked)
         self.view.reproject_button.clicked.connect(self.reproject_button_clicked)
         self.view.export_button.clicked.connect(self.export_button_clicked)
-        #self.view.map_button.clicked.connect(self.map_button_clicked)
 
         self.view.import_ok_btn.clicked.connect(self.import_ok_button_clicked)
 
@@ -51,12 +50,11 @@ class UIController:
             if path.endswith(".csv"):
                 self.model.read_csv_file(path)
                 self.model.excel_file = None
-                self.view.sheet_cbx.setEnabled(False)
             else:
                 self.model.read_excel_file(path)
                 sheets = self.model.excel_file.sheet_names
 
-            self.setup_import_screen(sheet_selection=False if path.endswith(".csv") else True,
+            self.setup_import_screen(csv=True if path.endswith(".csv") else False,
                                      sheets=sheets)
             self.view.switch_stack(1)
             toggle_wait_cursor(False)
@@ -67,32 +65,33 @@ class UIController:
             show_popup(f"Ops! Ocorreu um erro ao abrir o arquivo.", "error",
                        f"Descrição do erro: {error}\n\nContexto: import_button_clicked()")
 
-    def setup_import_screen(self, sheet_selection: bool = True, sheets: list | None = None):
+    def setup_import_screen(self, csv: bool = False, sheets: list | None = None):
         # Desconecta os componentes para poder atualizar sem dar trigger nas funções
         self.view.sheet_cbx.disconnect()
         self.view.crs_cbx.disconnect()
+        self.view.dms_chk.disconnect()
         self.view.x_cbx.disconnect()
         self.view.y_cbx.disconnect()
 
-        self.view.sheet_cbx.setEnabled(sheet_selection)
+        self.view.sheet_cbx.clear()
+        self.view.sheet_cbx.setEnabled(not csv)
 
         # Caso seja um tipo de arquivo que suporta múltiplas planilhas/abas (xlsx, xlsm, ods) (i.e. não é um csv)
-        if sheet_selection:
-            self.view.sheet_cbx.clear()
+        if not csv:
             self.view.sheet_cbx.addItems(sheets)
             self.model.read_excel_sheet(0)
 
-        try:  # Eu não lembro por que esse try está aqui ou se ele é necessário, mas está funcionando
-            self.view.crs_cbx.clear()
-            self.view.crs_cbx.addItems(sorted(CRS_DICT))
-            self.view.crs_cbx.setCurrentText("SIRGAS 2000 (EPSG:4674)")
-        except Exception as error:
-            ic(error)
+        self.view.crs_cbx.clear()
+        self.view.crs_cbx.addItems(sorted(CRS_DICT))
+        self.view.crs_cbx.setCurrentText("SIRGAS 2000 (EPSG:4674)")
+
+        self.view.dms_chk.setChecked(False)
 
         self.fill_xy_combos()
 
         self.view.sheet_cbx.currentTextChanged.connect(self.sheet_selected)
         self.view.crs_cbx.currentTextChanged.connect(self.crs_selected)
+        self.view.dms_chk.clicked.connect(self.check_if_selected_xy_is_valid)
         self.view.x_cbx.currentTextChanged.connect(self.check_if_selected_xy_is_valid)
         self.view.y_cbx.currentTextChanged.connect(self.check_if_selected_xy_is_valid)
 
@@ -115,7 +114,8 @@ class UIController:
 
     def check_if_selected_xy_is_valid(self):
         crs_key = self.view.crs_cbx.currentText()
-        valid_x_cols, valid_y_cols = self.model.filter_coordinates_columns(crs_key)
+        dms_format = self.view.dms_chk.isChecked()
+        valid_x_cols, valid_y_cols = self.model.filter_coordinates_columns(crs_key, dms_format)
 
         selected_x = self.view.x_cbx.currentText()
         selected_y = self.view.y_cbx.currentText()
@@ -160,14 +160,14 @@ class UIController:
             crs_key = self.view.crs_cbx.currentText()
             x_column = self.view.x_cbx.currentText()
             y_column = self.view.y_cbx.currentText()
-            self.model.set_geodataframe_geometry(crs_key, x_column, y_column)
+            dms = self.view.dms_chk.isChecked()
+            self.model.set_geodataframe_geometry(crs_key, x_column, y_column, dms)
             self.update_column_list()
             self.view.switch_stack(0)
 
             self.view.merge_button.setEnabled(
                 True if self.model.excel_file and len(self.model.excel_file.sheet_names) > 1 else False)
             self.view.reproject_button.setEnabled(True)
-            #self.view.map_button.setEnabled(True)
             self.view.export_button.setEnabled(True)
 
             toggle_wait_cursor(False)

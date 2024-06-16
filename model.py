@@ -7,6 +7,7 @@ import csv
 import pandas
 import geopandas
 import pyproj
+import re
 
 from icecream import ic
 
@@ -131,15 +132,22 @@ class DataHandler:
             raise Exception('A tabela selecionada está vazia ou contém apenas cabeçalhos.')
         return df
 
-    def filter_coordinates_columns(self, crs_key: str) -> (list[str], list[str]):
+    def filter_coordinates_columns(self, crs_key: str, dms_format: bool = False) -> (list[str], list[str]):
         """
-        Encontra as colunas válidas para coordenadas no GeoDataFrame contido no atributo "gdf" da classe e retorna uma
-        lista de colunas válidas para x (longitude/easting) e y (latitude/northing). São consideradas colunas válidas
-        aquelas que podem ser convertidas para float e cujos valores estão dentro dos limites esperados para as
+        Encontra as colunas válidas para coordenadas no GeoDataFrame e retorna uma lista de colunas válidas para x
+        (longitude/easting) e y (latitude/northing). São consideradas colunas válidas aquelas que podem ser convertidas
+        para float e cujos valores estão dentro dos limites esperados para as
         coordenadas do SRC.
         :param crs_key: A chave para o dicionário de SRCs (CRS_DICT), no formato "name (auth:code)". Ex: "SIRGAS 2000 (EPSG:4674)".
+        :param dms_format: Caso as coordenadas estejam em formato GMS (GG°MM'SS.ssss"H)
         :return: Listas contendo os rótulos das colunas válidas para x e y, respectivamente.
         """
+        x_columns, y_columns = [], []
+
+        if dms_format:
+            x_columns, y_columns = self.filter_dms_coordinates_columns()
+            return x_columns, y_columns
+
         crs = pyproj.CRS.from_authority(CRS_DICT[crs_key]["auth_name"], CRS_DICT[crs_key]["code"])
 
         if str(CRS_DICT[crs_key]["type"]) == "PJType.GEOGRAPHIC_2D_CRS":
@@ -147,8 +155,6 @@ class DataHandler:
         else:
             transformer = pyproj.Transformer.from_crs(crs.geodetic_crs, crs, always_xy=True)
             x_min, y_min, x_max, y_max = transformer.transform_bounds(*crs.area_of_use.bounds)
-
-        y_columns, x_columns = [], []
 
         for col in self.gdf.columns:
             try:
@@ -159,6 +165,51 @@ class DataHandler:
                     x_columns.append(col)
             except (ValueError, TypeError):
                 continue
+
+        return x_columns, y_columns
+
+    def filter_dms_coordinates_columns(self):
+        """
+        Encontra as colunas válidas para coordenadas em formato GMS (GG°MM'SS,sss"D) no GeoDataFrame contido no
+        GeoDataFrame e retorna uma lista de colunas válidas para x (longitude) e y (latitude).
+        :return: Listas contendo os rótulos das colunas válidas para x e y, respectivamente.
+        """
+        y_pattern = re.compile(r"^(\d{1,2})([°º])(\d{1,2})(['’′])(\d{1,2}([.,]\d+)?)([\"”″])([NSns])$")
+        x_pattern = re.compile(r"^(\d{1,3})([°º])(\d{1,2})(['’′])(\d{1,2}([.,]\d+)?)([\"”″])([EWOLewol])$")
+        x_columns, y_columns = [], []
+
+        for c in self.gdf.columns:
+            rows = self.gdf[c].values
+            x_ok, y_ok = True, True
+
+            for value in rows:
+                value = str(value).replace(" ", "")
+                if x_pattern.match(value) is None:
+                    x_ok = False
+                if y_pattern.match(value) is None:
+                    y_ok = False
+
+                if not x_ok and not y_ok:
+                    continue
+
+                parts = re.split(r'[^\d\w]+', value)
+                degrees = int(parts[0])
+                minutes = int(parts[1])
+                seconds = float(f"{parts[2]}.{parts[3]}" if parts[3].isdigit() else parts[2])
+
+                if degrees > 180:
+                    x_ok = False
+                    y_ok = False
+                elif degrees > 90:
+                    y_ok = False
+
+                if minutes > 60 or seconds > 60:
+                    x_ok, y_ok = False, False
+
+            if x_ok:
+                x_columns.append(c)
+            if y_ok:
+                y_columns.append(c)
 
         return x_columns, y_columns
 
@@ -182,7 +233,7 @@ class DataHandler:
 
         return next((col for col in column_options if str(col).lower() in common_names), None)
 
-    def set_geodataframe_geometry(self, crs_key: str, x_column: str, y_column: str) -> None:
+    def set_geodataframe_geometry(self, crs_key: str, x_column: str, y_column: str, dms: bool) -> None:
         """
         Define a geometria e o crs do GeoDataFrame contido no adributo "gdf" da classe. Também define os atributos
         "crs_key", "x_column" e "y_column" da classe com base nos parâmetros dados.
@@ -191,12 +242,45 @@ class DataHandler:
         :param y_column: O rótulo da coluna que contém as coordenadas do eixo Y.
         """
         crs = pyproj.CRS.from_authority(CRS_DICT[crs_key]["auth_name"], CRS_DICT[crs_key]["code"])
-        geometry = geopandas.points_from_xy(self.gdf[x_column], self.gdf[y_column], crs=crs)
 
+        if dms:
+            x, y = self.convert_dms_to_decimal(x_column, y_column)
+        else:
+            x, y = self.gdf[x_column], self.gdf[y_column]
+
+        geometry = geopandas.points_from_xy(x, y, crs=crs)
         self.gdf = geopandas.GeoDataFrame(self.gdf, geometry=geometry, crs=crs)
 
         self.x_column, self.y_column = x_column, y_column
         self.crs_key = crs_key
+
+    def convert_dms_to_decimal(self, x_column: str, y_column: str):
+        """
+        Converte coordenadas em formato GMS contidas em duas colunas distintas do GeoDataFrame para formato decimal.
+        :param x_column: A coluna contendo as longitudes em GMS.
+        :param y_column: A coluna contendo as latitudes em GMS.
+        :return: Duas listas contendo longitudes e latitudes, respectivamente, em formato decimal.
+        """
+        x, y = [], []
+        for i, c in enumerate((x_column, y_column)):
+            rows = self.gdf[c].values
+            for value in rows:
+                value = str(value).strip()
+                parts = re.split(r"°|º|'|’|′|\"|”|″|''", value)
+                d, m, s = int(parts[0]), int(parts[1]), float(parts[2].replace(",", "."))
+                direction = parts[3]
+                ic(direction)
+
+                dd = d + (m / 60) + (s / 3600)
+
+                if direction in "SWOswo":
+                    dd *= -1
+
+                if i == 0:
+                    x.append(dd)
+                else:
+                    y.append(dd)
+        return x, y
 
     def merge_sheets(self, merge_column: str) -> (list[str], list[str]):
         """
@@ -321,6 +405,7 @@ def get_dtype_key(value: str) -> str | None:
 
 
 # TESTES ||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*-
+"""
 if __name__ == "__main__":
     ic.configureOutput(prefix="LOG| ", includeContext=False)
 
@@ -350,3 +435,4 @@ if __name__ == "__main__":
     ic(handler.gdf.crs)
     # EXPORTA UM ARQUIVO VETORIAL
     ic(handler.save_to_geospatial_file(output_file))
+"""
