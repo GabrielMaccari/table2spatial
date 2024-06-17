@@ -338,18 +338,21 @@ class DataHandler:
         :kwarg datetime_format: O formato de data e hora (necessário apenas ao converter para Datetime)
         :return: Nada
         """
-        if target_dtype_key == "Boolean": # TODO verificar se isso está funcionando certinho
-            true, false = kwargs.get("true_key", "Sim"), kwargs.get("false_key", "Não")
-            true = pandas.NA if true == "NULL" else true
-            false = pandas.NA if false == "NULL" else false
-            if not self.gdf[column].astype(str).isin((true, false)).all():
-                raise ValueError(f"A coluna deve conter apenas os valores indicados para verdadeiro e falso ({true} e {false}).")
-            if true == "<Nenhum>":
-                self.gdf[column] = self.gdf[column].astype(str).map({true: False, false: False}).astype(bool)
-            elif false == "<Nenhum>":
-                self.gdf[column] = self.gdf[column].astype(str).map({true: True, false: True}).astype(bool)
+        def switch_to_boolean(c, t, f):
+            t = pandas.NA if t == "<Células vazias>" else t
+            f = pandas.NA if f == "<Células vazias>" else f
+            if not self.gdf[c].astype("string").isin((t, f)).all():
+                raise ValueError(f"A coluna deve conter apenas os valores indicados para verdadeiro e falso ({t} e {f}).")
+            if str(t) == "<Nenhum>":
+                self.gdf[c] = self.gdf[c].astype("string").map({t: False, f: False}).astype(bool)
+            elif str(f) == "<Nenhum>":
+                self.gdf[c] = self.gdf[c].astype("string").map({t: True, f: True}).astype(bool)
             else:
-                self.gdf[column] = self.gdf[column].astype(str).map({true: True, false: False}).astype(bool)
+                self.gdf[c] = self.gdf[c].astype("string").map({t: True, f: False}).astype(bool)
+
+        if target_dtype_key == "Boolean":
+            true, false = kwargs.get("true_key", "Sim"), kwargs.get("false_key", "Não")
+            switch_to_boolean(column, true, false)
         elif target_dtype_key == "Datetime":
             datetime_format = kwargs.get("datetime_format", "DD-MM-YYYY")
             self.gdf[column] = pandas.to_datetime(self.gdf[column], format=DATETIME_FORMATS[datetime_format], errors="raise")
