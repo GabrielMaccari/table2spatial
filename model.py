@@ -269,7 +269,6 @@ class DataHandler:
                 parts = re.split(r"°|º|'|’|′|\"|”|″|''", value)
                 d, m, s = int(parts[0]), int(parts[1]), float(parts[2].replace(",", "."))
                 direction = parts[3]
-                ic(direction)
 
                 dd = d + (m / 60) + (s / 3600)
 

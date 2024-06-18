@@ -2,6 +2,7 @@
 """
 @author: Gabriel Maccari
 """
+import pandas
 from PyQt6 import QtCore, QtGui, QtWidgets
 from icecream import ic
 
@@ -374,18 +375,17 @@ class UIController:
     def show_uniques_action_triggered(self):
         try:
             toggle_wait_cursor(True)
+
             row = self.view.columns_list.currentRow()
             column = self.column_list_widgets[row].field
 
-            uniques = sorted([str(value) for value in self.model.gdf[column].unique()])
-            if "nan" in uniques:
-                has_nan = True
-                uniques.remove("nan")
-            else:
-                has_nan = False
+            uniques = self.model.gdf[column].astype("string").unique()
+            uniques = [value for value in uniques if not pandas.isna(value)]
+            has_na = any(pandas.isna(value) for value in uniques)
 
             toggle_wait_cursor(False)
-            ListWindow(uniques, has_nan, self.view)
+
+            ListWindow(sorted(uniques), has_na, self.view)
         except Exception as error:
             handle_exception(error, "show_uniques_action_triggered()", "Ops! Ocorreu um erro ao obter a lista de valores únicos.")
 
