@@ -129,7 +129,7 @@ class DataHandler:
         df = df.dropna(how='all', axis='index')
         # Verifica se existem linhas preenchidas no arquivo
         if len(df.index) <= 0:
-            raise Exception('A tabela selecionada está vazia ou contém apenas cabeçalhos.')
+            raise IndexError('A tabela selecionada está vazia ou contém apenas cabeçalhos.')
         return df
 
     def filter_coordinates_columns(self, crs_key: str, dms_format: bool = False) -> (list[str], list[str]):

@@ -167,19 +167,17 @@ cython_debug/
 # Prevent users to commit the README files created by RStudio
 *README.html
 *README_cache/
-#*README_files/
-.idea/vcs.xml
-.idea/table2spatial-rep.iml
-.idea/modules.xml
-.idea/misc.xml
-.idea/inspectionProfiles/profiles_settings.xml
 
+# PyCharm project folder
 .idea/
-/*.gpkg
-/*.shp
-/*.geojson
-/*.db
-/pyinstaller command.txt
-.idea
 
-dataframe.csv
+# Arquivos de saída de teste
+teste.gpkg
+teste.geojson
+teste.cpg
+teste.dbf
+teste.prj
+teste.shp
+teste.shx
+teste.xlsx
+teste.csv
