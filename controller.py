@@ -380,8 +380,8 @@ class UIController:
             column = self.column_list_widgets[row].field
 
             uniques = self.model.gdf[column].astype("string").unique()
-            uniques = [value for value in uniques if not pandas.isna(value)]
             has_na = any(pandas.isna(value) for value in uniques)
+            uniques = [value for value in uniques if not pandas.isna(value)]
 
             toggle_wait_cursor(False)
 
