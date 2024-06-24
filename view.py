@@ -3,9 +3,7 @@
 @author: Gabriel Maccari
 """
 
-from PyQt6 import QtWidgets
-from PyQt6 import QtGui
-from PyQt6 import QtCore
+from PyQt6 import QtWidgets, QtGui, QtCore
 
 from model import DTYPES_DICT, get_dtype_key
 
@@ -35,6 +33,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.layout.addWidget(self.reproject_button, 0, 2, 1, 1)
         self.export_button = ToolbarButton(self, "Exportar como camada vetorial de pontos ou tabela", "layers.png")
         self.layout.addWidget(self.export_button, 0, 3, 1, 1)
+        self.graph_button = ToolbarButton(self, "Criar gráfico de dados geológicos", "graph.png", click_menu=True)
+        self.layout.addWidget(self.graph_button, 0, 4, 1, 1)
+
+        self.graph_stereogram_action = self.graph_button.click_menu.addAction("Estereograma")
+        #self.graph_rosediagram_action = self.graph_button.click_menu.addAction("Diagrama de roseta")
 
         # PAGINADOR
         self.frame_stack = QtWidgets.QStackedWidget(self)
@@ -51,48 +54,49 @@ class MainWindow(QtWidgets.QMainWindow):
         self.columns_list.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         # PAGINADOR → PÁGINA DE IMPORTAÇÃO
-        row = 0
         self.frame_stack.addWidget(self.import_stack)
         self.import_stack_layout = QtWidgets.QGridLayout(self.import_stack)
         self.sheet_lbl = QtWidgets.QLabel("Planilha:", self.import_stack)
-        self.import_stack_layout.addWidget(self.sheet_lbl, row, 0, 1, 20)
-        row += 1
         self.sheet_cbx = QtWidgets.QComboBox(self.import_stack)
-        self.import_stack_layout.addWidget(self.sheet_cbx, row, 0, 1, 20)
-        row += 1
         self.crs_lbl = QtWidgets.QLabel("SRC:", self.import_stack)
-        self.import_stack_layout.addWidget(self.crs_lbl, row, 0, 1, 20)
-        row += 1
         self.crs_cbx = QtWidgets.QComboBox(self.import_stack)
-        self.import_stack_layout.addWidget(self.crs_cbx, row, 0, 1, 20)
-        row += 1
         self.coords_lbl = QtWidgets.QLabel("Coordenadas:", self.import_stack)
-        self.import_stack_layout.addWidget(self.coords_lbl, row, 0, 1, 20)
-        row += 1
         self.dms_chk = QtWidgets.QCheckBox("Formato GMS (GG°MM'SS.sss\")", self.import_stack)
-        self.import_stack_layout.addWidget(self.dms_chk, row, 0, 1, 20)
-        row += 1
         self.x_lbl = QtWidgets.QLabel("X:", self.import_stack)
-        self.import_stack_layout.addWidget(self.x_lbl, row, 0, 1, 1)
         self.x_cbx = QtWidgets.QComboBox(self.import_stack)
-        self.import_stack_layout.addWidget(self.x_cbx, row, 1, 1, 18)
         self.x_ok_icon = QtWidgets.QPushButton(icon=QtGui.QIcon("icons/circle.png"))
         self.x_ok_icon.setFlat(True)
-        self.import_stack_layout.addWidget(self.x_ok_icon, row, 19, 1, 1)
-        row += 1
         self.y_lbl = QtWidgets.QLabel("Y:", self.import_stack)
-        self.import_stack_layout.addWidget(self.y_lbl, row, 0, 1, 1)
         self.y_cbx = QtWidgets.QComboBox(self.import_stack)
-        self.import_stack_layout.addWidget(self.y_cbx, row, 1, 1, 18)
         self.y_ok_icon = QtWidgets.QPushButton(icon=QtGui.QIcon("icons/circle.png"))
         self.y_ok_icon.setFlat(True)
+        self.import_ok_btn = QtWidgets.QPushButton("OK", self.import_stack)
+        self.import_cancel_btn = QtWidgets.QPushButton("Cancelar", self.import_stack)
+        row = 0
+        self.import_stack_layout.addWidget(self.sheet_lbl, row, 0, 1, 20)
+        row += 1
+        self.import_stack_layout.addWidget(self.sheet_cbx, row, 0, 1, 20)
+        row += 1
+        self.import_stack_layout.addWidget(self.crs_lbl, row, 0, 1, 20)
+        row += 1
+        self.import_stack_layout.addWidget(self.crs_cbx, row, 0, 1, 20)
+        row += 1
+        self.import_stack_layout.addWidget(self.coords_lbl, row, 0, 1, 20)
+        row += 1
+        self.import_stack_layout.addWidget(self.dms_chk, row, 0, 1, 20)
+        row += 1
+        self.import_stack_layout.addWidget(self.x_lbl, row, 0, 1, 1)
+        self.import_stack_layout.addWidget(self.x_cbx, row, 1, 1, 18)
+        self.import_stack_layout.addWidget(self.x_ok_icon, row, 19, 1, 1)
+        row += 1
+        self.import_stack_layout.addWidget(self.y_lbl, row, 0, 1, 1)
+        self.import_stack_layout.addWidget(self.y_cbx, row, 1, 1, 18)
         self.import_stack_layout.addWidget(self.y_ok_icon, row, 19, 1, 1)
         row += 1
-        self.import_ok_btn = QtWidgets.QPushButton("OK", self.import_stack)
         self.import_stack_layout.addWidget(self.import_ok_btn, row, 0, 1, 4)
-        self.import_cancel_btn = QtWidgets.QPushButton("Cancelar", self.import_stack)
         self.import_stack_layout.addWidget(self.import_cancel_btn, row, 4, 1, 4)
-        self.import_stack_layout.setRowStretch(row+1, 1)
+        row += 1
+        self.import_stack_layout.setRowStretch(row, 1)
 
         # RÓTULO INFERIOR
         self.copyright_label = QtWidgets.QLabel("©2024 Gabriel Maccari / Icons by www.icons8.com")
@@ -107,12 +111,16 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
 class ToolbarButton(QtWidgets.QToolButton):
-    def __init__(self, parent, tooltip, icon, enabled=False):
+    def __init__(self, parent, tooltip, icon, enabled=False, click_menu=False):
         super().__init__(parent=parent)
         self.setIcon(QtGui.QIcon(f"icons/{icon}"))
         self.setToolTip(tooltip)
         self.setFixedSize(40, 40)
         self.setEnabled(enabled)
+        self.click_menu = None
+
+        if click_menu:
+            self.click_menu = QtWidgets.QMenu(self)
 
 
 class ListRow(QtWidgets.QWidget):
@@ -158,6 +166,7 @@ class ListRow(QtWidgets.QWidget):
 class ListWindow(QtWidgets.QMainWindow):
     def __init__(self, values_list: list[any], has_nan: bool, parent):
         super(ListWindow, self).__init__(parent)
+        self.parent = parent
 
         self.setWindowTitle('Valores únicos')
         self.setWindowIcon(QtGui.QIcon('icons/list.png'))
@@ -180,10 +189,6 @@ class ListWindow(QtWidgets.QMainWindow):
         self.close_button = QtWidgets.QPushButton("Fechar")
         self.close_button.clicked.connect(self.close)
         self.layout.addWidget(self.close_button)
-
-        self.show()
-
-        center_window_on_point(self, parent.geometry().center())
 
 
 def center_window_on_point(window, center_point):

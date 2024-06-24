@@ -7,8 +7,9 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 from icecream import ic
 
 from model import DataHandler, CRS_DICT, DATETIME_FORMATS, get_dtype_key
-from view import MainWindow, ListRow, ListWindow
+from view import MainWindow, ListRow, ListWindow, center_window_on_point
 from dialogs import show_popup, show_file_dialog, show_selection_dialog, show_input_dialog, show_question_dialog
+from extensions.stereogram import StereogramWindow
 
 
 class UIController:
@@ -25,6 +26,7 @@ class UIController:
         self.view.merge_button.clicked.connect(self.merge_button_clicked)
         self.view.reproject_button.clicked.connect(self.reproject_button_clicked)
         self.view.export_button.clicked.connect(self.export_button_clicked)
+        self.view.graph_button.clicked.connect(self.graph_button_clicked)
 
         self.view.import_ok_btn.clicked.connect(self.import_ok_button_clicked)
 
@@ -36,7 +38,7 @@ class UIController:
                 extension_filter=("Formatos suportados (*.xlsx *.xlsm *.csv *.ods);;"
                                   "Pasta de Trabalho do Excel (*.xlsx);;"
                                   "Pasta de Trabalho Habilitada para Macro do Excel (*.xlsm);;"
-                                  "Comma Separated Values (*.csv);; "
+                                  "Comma Separated Values (*.csv);;"
                                   "OpenDocument Spreadsheet (*.ods)"),
                 mode="open", parent=self.view
             )
@@ -170,6 +172,7 @@ class UIController:
                 True if self.model.excel_file and len(self.model.excel_file.sheet_names) > 1 else False)
             self.view.reproject_button.setEnabled(True)
             self.view.export_button.setEnabled(True)
+            self.view.graph_button.setEnabled(True)
 
             toggle_wait_cursor(False)
         except Exception as error:
@@ -332,6 +335,17 @@ class UIController:
         except Exception as error:
             handle_exception(error, "export_button_clicked()", "Ops! Não foi possível exportar.")
 
+    def graph_button_clicked(self):
+        try:
+            action = self.view.graph_button.click_menu.exec(self.view.graph_button.mapToGlobal(self.view.graph_button.rect().bottomLeft()))
+            if action is self.view.graph_stereogram_action:
+                graph_window = StereogramWindow(self.view, self.model.gdf)
+                graph_window.show()
+                center_window_on_point(graph_window, graph_window.parent.geometry().center())
+
+        except Exception as error:
+            handle_exception(error, "graph_button_clicked()", "Ops! Ocorreu um erro.")
+
     def rename_column_action_triggered(self):
         try:
             row = self.view.columns_list.currentRow()
@@ -385,7 +399,9 @@ class UIController:
 
             toggle_wait_cursor(False)
 
-            ListWindow(sorted(uniques), has_na, self.view)
+            list_window = ListWindow(sorted(uniques), has_na, self.view)
+            list_window.show()
+            center_window_on_point(list_window, list_window.parent.geometry().center())
         except Exception as error:
             handle_exception(error, "show_uniques_action_triggered()", "Ops! Ocorreu um erro ao obter a lista de valores únicos.")
 
