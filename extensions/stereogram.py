@@ -167,6 +167,7 @@ class StereogramWindow(QtWidgets.QMainWindow):
         height = int(pixmap.height() * width / pixmap.width())
         pixmap = pixmap.scaled(width, height, QtCore.Qt.AspectRatioMode.KeepAspectRatio, QtCore.Qt.TransformationMode.SmoothTransformation)
         self.image_lbl.setPixmap(pixmap)
+        self.setFixedSize(self.geometry().width(), self.geometry().height())
 
     def save_button_clicked(self):
         try:

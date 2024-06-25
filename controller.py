@@ -69,7 +69,10 @@ class UIController:
 
     def setup_import_screen(self, csv: bool = False, sheets: list | None = None):
         # Desconecta os componentes para poder atualizar sem dar trigger nas funções
-        self.connect_import_screen_components(False)
+        try:
+            self.connect_import_screen_components(False)
+        except TypeError:
+            pass
 
         self.view.sheet_cbx.clear()
         self.view.sheet_cbx.setEnabled(not csv)

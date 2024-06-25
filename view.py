@@ -4,8 +4,11 @@
 """
 
 from PyQt6 import QtWidgets, QtGui, QtCore
+from platform import platform
 
 from model import DTYPES_DICT, get_dtype_key
+
+OS = platform()
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -114,6 +117,7 @@ class ToolbarButton(QtWidgets.QToolButton):
     def __init__(self, parent, tooltip, icon, enabled=False, click_menu=False):
         super().__init__(parent=parent)
         self.setIcon(QtGui.QIcon(f"icons/{icon}"))
+        self.setIconSize(QtCore.QSize(30, 30))
         self.setToolTip(tooltip)
         self.setFixedSize(40, 40)
         self.setEnabled(enabled)
@@ -135,7 +139,7 @@ class ListRow(QtWidgets.QWidget):
         self.column_lbl.setGeometry(5, 0, 225, 30)
 
         self.dtype_cbx = QtWidgets.QComboBox(self)
-        self.dtype_cbx.setGeometry(240, 4, 120, 22)
+        self.dtype_cbx.setGeometry(240, 4, 120, 22 if OS.startswith("Win") else 26)
 
         if self.dtype == "geometry":
             self.dtype_cbx.addItems(["Point(X,Y)"])
