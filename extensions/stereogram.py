@@ -1,6 +1,6 @@
 import matplotlib
 import numpy
-import geopandas
+import pandas
 import mplstereonet
 import os
 import matplotlib.pyplot as plt
@@ -19,16 +19,18 @@ MEASUREMENT_TYPES = {
     'Linhas em planos (strike/dip/rake)': ('Strike', 'Dip', 'Rake')
 }
 
+PLOT_WIDTH = 350
+
 # Strike, dip direction e bearing: 0 - 360°
 # Dip e plunge: 0 - 90°
 # Rake: -180° - 180°
 
 
 class StereogramWindow(QtWidgets.QMainWindow):
-    def __init__(self, parent: QtWidgets.QMainWindow, gdf: geopandas.GeoDataFrame):
+    def __init__(self, parent: QtWidgets.QMainWindow, df: pandas.DataFrame):
         super(StereogramWindow, self).__init__(parent)
         self.parent = parent
-        self.gdf = gdf.copy()
+        self.df = df.drop(columns="geometry")
 
         self.setWindowTitle('Estereograma')
         self.setWindowIcon(QtGui.QIcon('icons/graph.png'))
@@ -36,64 +38,64 @@ class StereogramWindow(QtWidgets.QMainWindow):
         self.frame_stack = QtWidgets.QStackedWidget(self)
         self.setCentralWidget(self.frame_stack)
 
-        config_layout = QtWidgets.QVBoxLayout()
-        config_layout.setSpacing(5)
-        config_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignCenter)
-        config_page = QtWidgets.QWidget(self.frame_stack)
-        config_page.setLayout(config_layout)
-        self.frame_stack.addWidget(config_page)
-
-        plot_layout = QtWidgets.QGridLayout()
-        plot_layout.setSpacing(5)
-        plot_page = QtWidgets.QWidget(self.frame_stack)
-        plot_page.setLayout(plot_layout)
-        self.frame_stack.addWidget(plot_page)
-
         # CONFIG PAGE
+        self.config_layout = QtWidgets.QVBoxLayout()
+        self.config_layout.setSpacing(5)
+        self.config_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.config_page = QtWidgets.QWidget(self.frame_stack)
+        self.config_page.setLayout(self.config_layout)
+        self.frame_stack.addWidget(self.config_page)
+
         msr_type = "Planos (dip direction/dip)"
         lb1, lb2, lb3 = MEASUREMENT_TYPES[msr_type][0]+"s:", MEASUREMENT_TYPES[msr_type][1]+"s:", "Rakes:"
-        self.measurement_type_lbl = QtWidgets.QLabel("Tipo de medida:", config_page)
-        self.measurement_type_cbx = QtWidgets.QComboBox(config_page)
+
+        self.measurement_type_lbl = QtWidgets.QLabel("Tipo de medida:", self.config_page)
+        self.measurement_type_cbx = QtWidgets.QComboBox(self.config_page)
         self.measurement_type_cbx.addItems(MEASUREMENT_TYPES)
         self.measurement_type_cbx.setMinimumWidth(300)
-        self.azimuths_column_lbl = QtWidgets.QLabel(lb1, config_page)
-        self.azimuths_column_cbx = QtWidgets.QComboBox(config_page)
+        self.azimuths_column_lbl = QtWidgets.QLabel(lb1, self.config_page)
+        self.azimuths_column_cbx = QtWidgets.QComboBox(self.config_page)
         self.azimuths_column_cbx.addItems(self.filter_angle_columns("azimuth"))
-        self.dips_column_lbl = QtWidgets.QLabel(lb2, config_page)
-        self.dips_column_cbx = QtWidgets.QComboBox(config_page)
+        self.dips_column_lbl = QtWidgets.QLabel(lb2, self.config_page)
+        self.dips_column_cbx = QtWidgets.QComboBox(self.config_page)
         self.dips_column_cbx.addItems(self.filter_angle_columns("dip"))
-        self.rakes_column_lbl = QtWidgets.QLabel(lb3, config_page)
+        self.rakes_column_lbl = QtWidgets.QLabel(lb3, self.config_page)
         self.rakes_column_lbl.setEnabled(False)
-        self.rakes_column_cbx = QtWidgets.QComboBox(config_page)
+        self.rakes_column_cbx = QtWidgets.QComboBox(self.config_page)
         self.rakes_column_cbx.setEnabled(False)
         self.plot_poles_chk = QtWidgets.QCheckBox("Plotar planos como pólos")
         self.ok_btn = QtWidgets.QPushButton("OK")
 
-        config_layout.addWidget(self.measurement_type_lbl)
-        config_layout.addWidget(self.measurement_type_cbx)
-        config_layout.addWidget(self.azimuths_column_lbl)
-        config_layout.addWidget(self.azimuths_column_cbx)
-        config_layout.addWidget(self.dips_column_lbl)
-        config_layout.addWidget(self.dips_column_cbx)
-        config_layout.addWidget(self.rakes_column_lbl)
-        config_layout.addWidget(self.rakes_column_cbx)
-        config_layout.addWidget(self.plot_poles_chk)
-        config_layout.addWidget(self.ok_btn)
+        self.config_layout.addWidget(self.measurement_type_lbl)
+        self.config_layout.addWidget(self.measurement_type_cbx)
+        self.config_layout.addWidget(self.azimuths_column_lbl)
+        self.config_layout.addWidget(self.azimuths_column_cbx)
+        self.config_layout.addWidget(self.dips_column_lbl)
+        self.config_layout.addWidget(self.dips_column_cbx)
+        self.config_layout.addWidget(self.rakes_column_lbl)
+        self.config_layout.addWidget(self.rakes_column_cbx)
+        self.config_layout.addWidget(self.plot_poles_chk)
+        self.config_layout.addWidget(self.ok_btn)
 
         self.measurement_type_cbx.currentTextChanged.connect(self.measurement_type_selected)
         self.ok_btn.clicked.connect(self.ok_button_clicked)
 
         # PLOT PAGE
-        self.save_btn = QtWidgets.QPushButton(plot_page)
+        self.plot_layout = QtWidgets.QGridLayout()
+        self.plot_layout.setSpacing(5)
+        self.plot_page = QtWidgets.QWidget(self.frame_stack)
+        self.plot_page.setLayout(self.plot_layout)
+        self.frame_stack.addWidget(self.plot_page)
+
+        self.save_btn = QtWidgets.QPushButton(self.plot_page)
         self.save_btn.setIcon(QtGui.QIcon("icons/save.png"))
         self.save_btn.setIconSize(QtCore.QSize(28, 28))
         self.save_btn.setFixedSize(30, 30)
-        self.image_lbl = QtWidgets.QLabel(plot_page)
-        self.image_lbl.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter | QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.image_lbl.resize(400, 300)
+        self.image_btn = QtWidgets.QPushButton(self.plot_page)
+        self.image_btn.setFlat(True)
 
-        plot_layout.addWidget(self.save_btn, 0, 0, 1, 1)
-        plot_layout.addWidget(self.image_lbl, 1, 0, 10, 10)
+        self.plot_layout.addWidget(self.save_btn, 0, 0, 1, 1)
+        self.plot_layout.addWidget(self.image_btn, 1, 0, 10, 10)
 
         self.save_btn.clicked.connect(self.save_button_clicked)
 
@@ -106,10 +108,10 @@ class StereogramWindow(QtWidgets.QMainWindow):
             }
             min_angle, max_angle = ranges[angle_type][0], ranges[angle_type][1]
             valid_columns = []
-            for column in self.gdf:
-                if not self.gdf[column].dtype in ("float64", "float32", "float16", 'int64', 'uint64', 'int32', 'uint32', 'int16', 'uint16', 'int8', 'uint8'):
+            for column in self.df:
+                if not self.df[column].dtype in ("float64", "float32", "float16", 'int64', 'uint64', 'int32', 'uint32', 'int16', 'uint16', 'int8', 'uint8'):
                     continue
-                if self.gdf[column].dropna().between(min_angle, max_angle).all():
+                if self.df[column].dropna().between(min_angle, max_angle).all():
                     valid_columns.append(column)
             return valid_columns
         except Exception as error:
@@ -138,15 +140,15 @@ class StereogramWindow(QtWidgets.QMainWindow):
             msr_type = self.measurement_type_cbx.currentText()
             plot_poles = self.plot_poles_chk.isChecked()
 
-            azimuths = self.gdf[self.azimuths_column_cbx.currentText()].values
-            dips = self.gdf[self.dips_column_cbx.currentText()].values
+            azimuths = self.df[self.azimuths_column_cbx.currentText()].values.copy()
+            dips = self.df[self.dips_column_cbx.currentText()].values.copy()
             rakes = None
 
             if msr_type.startswith("Planos"):
                 plot_type = "poles" if plot_poles else "planes"
             elif msr_type.startswith("Linhas em planos"):
                 plot_type = "rakes"
-                rakes = self.gdf[self.rakes_column_cbx.currentText()].values
+                rakes = self.df[self.rakes_column_cbx.currentText()].values.copy()
             else:
                 plot_type = "lines"
 
@@ -162,11 +164,12 @@ class StereogramWindow(QtWidgets.QMainWindow):
             handle_exception(error, "stereogram - ok_button_clicked()", "Ops! Ocorreu um erro ao plotar o gráfico!")
 
     def load_image(self):
-        pixmap = QtGui.QPixmap('plots/plot.png')
-        width = 400
-        height = int(pixmap.height() * width / pixmap.width())
-        pixmap = pixmap.scaled(width, height, QtCore.Qt.AspectRatioMode.KeepAspectRatio, QtCore.Qt.TransformationMode.SmoothTransformation)
-        self.image_lbl.setPixmap(pixmap)
+
+        self.image_btn.setIcon(QtGui.QIcon("plots/plot.png"))
+        pixmap = QtGui.QPixmap("plots/plot.png")
+        height = int(pixmap.height() * PLOT_WIDTH / pixmap.width())
+        self.image_btn.setIconSize(QtCore.QSize(PLOT_WIDTH, height))
+        self.image_btn.resize(PLOT_WIDTH, height)
         self.setFixedSize(self.geometry().width(), self.geometry().height())
 
     def save_button_clicked(self):
@@ -178,6 +181,8 @@ class StereogramWindow(QtWidgets.QMainWindow):
                        "JPG (*.jpg);;"
                        "SVG (*.svg)"
             )
+            if file_name == "":
+                return
             file_type = file_name[-3:]
             plt.savefig(file_name, dpi=300, format=file_type, transparent=True)
         except Exception as error:
@@ -186,13 +191,7 @@ class StereogramWindow(QtWidgets.QMainWindow):
     def center_to_parent(self):
         self.setFixedSize(self.geometry().width(), self.geometry().height())
         self.geometry().moveCenter(self.parent.geometry().center())
-        self.move(self.geometry().topLeft())
-
-
-def handle_exception(error, context, message: str = "Ocorreu um erro.", ):
-    toggle_wait_cursor(False)
-    ic(context, error)
-    show_popup(f"{message}", "error", f"Descrição do erro: {error}\n\nContexto: {context}")
+        self.move(self.parent.geometry().topLeft())
 
 
 def plot_stereogram(azimuths, dips, rakes: str = None, plot_type: str = "poles", plane_azimuth_type: str = "strike"):
@@ -236,6 +235,12 @@ def plot_stereogram(azimuths, dips, rakes: str = None, plot_type: str = "poles",
     if not os.path.exists(plots_folder):
         os.makedirs(plots_folder)
     plt.savefig(f"{plots_folder}/plot.png", dpi=300, format="png", transparent=True)
+
+
+def handle_exception(error, context, message: str = "Ocorreu um erro.", ):
+    toggle_wait_cursor(False)
+    ic(context, error)
+    show_popup(f"{message}", "error", f"Descrição do erro: {error}\n\nContexto: {context}")
 
 
 def show_popup(message: str, msg_type: str = "notification", details: str | None = None):

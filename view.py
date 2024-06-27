@@ -36,7 +36,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.layout.addWidget(self.reproject_button, 0, 2, 1, 1)
         self.export_button = ToolbarButton(self, "Exportar como camada vetorial de pontos ou tabela", "layers.png")
         self.layout.addWidget(self.export_button, 0, 3, 1, 1)
-        self.graph_button = ToolbarButton(self, "Criar gráfico de dados geológicos", "graph.png", click_menu=True)
+        self.graph_button = ToolbarButton(self, "Criar gráfico", "graph.png", click_menu=True)
         self.layout.addWidget(self.graph_button, 0, 4, 1, 1)
 
         self.graph_stereogram_action = self.graph_button.click_menu.addAction("Estereograma")
@@ -121,7 +121,6 @@ class ToolbarButton(QtWidgets.QToolButton):
         self.setToolTip(tooltip)
         self.setFixedSize(40, 40)
         self.setEnabled(enabled)
-        self.click_menu = None
 
         if click_menu:
             self.click_menu = QtWidgets.QMenu(self)

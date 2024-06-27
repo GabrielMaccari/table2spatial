@@ -342,7 +342,7 @@ class UIController:
         try:
             action = self.view.graph_button.click_menu.exec(self.view.graph_button.mapToGlobal(self.view.graph_button.rect().bottomLeft()))
             if action is self.view.graph_stereogram_action:
-                graph_window = StereogramWindow(self.view, self.model.gdf)
+                graph_window = StereogramWindow(self.view, pandas.DataFrame(self.model.gdf))
                 graph_window.show()
                 center_window_on_point(graph_window, graph_window.parent.geometry().center())
 
