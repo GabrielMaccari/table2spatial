@@ -181,6 +181,10 @@ teste.shp
 teste.shx
 teste.xlsx
 teste.csv
+teste.png
+teste.jpg
+teste.svg
 
 plots/
-plots/plot.png
+plots/stereogram.png
+plots/rose_chart.png

@@ -6,22 +6,22 @@
 from PyQt6 import QtWidgets, QtGui
 
 
-def show_popup(message: str, msg_type: str = "notification", details: str | None = None):
+def show_popup(message: str, msg_type: str = "notification", details: str | None = None, parent: QtWidgets.QMainWindow = None):
     """
     Exibe uma mensagem em popup.
     :param message: Conteúdo da popup.
     :param msg_type: "notification" ou "error". Define o ícone a ser exibido.
     :param details: String contendo informações adicionais.
+    :param parent: Janela pai.
     :return: Nada.
     """
     title = "Erro" if msg_type == "error" else "Notificação"
     icon = QtGui.QIcon("icons/error.png" if msg_type == "error" else "icons/info.png")
 
-    popup = QtWidgets.QMessageBox()
-
-    popup.setText(message)
-    popup.setWindowTitle(title)
+    popup = QtWidgets.QMessageBox(parent)
     popup.setWindowIcon(icon)
+    popup.setWindowTitle(title)
+    popup.setText(message)
 
     if details is not None:
         popup.setDetailedText(details)
@@ -84,13 +84,14 @@ def show_input_dialog(message: str, title: str = "Inserir", default_text: str = 
     return user_input, ok
 
 
-def show_question_dialog(message: str):
+def show_question_dialog(message: str, parent: QtWidgets.QMainWindow = None):
     """
     Exibe uma mensagem de confirmação.
     :param message: Conteúdo da popup.
+    :param parent: Janela pai.
     :return: Nada.
     """
-    dialog = QtWidgets.QMessageBox()
+    dialog = QtWidgets.QMessageBox(parent)
     dialog.setWindowIcon(QtGui.QIcon("icons/unknown.png"))
     dialog.setWindowTitle("Confirmação")
     dialog.setText(message)

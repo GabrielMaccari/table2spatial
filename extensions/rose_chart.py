@@ -2,13 +2,15 @@
 """
 @author: Gabriel Maccari
 """
+
 import matplotlib
 import os
 import numpy
 import pandas
 import matplotlib.pyplot as plt
 from PyQt6 import QtCore, QtGui, QtWidgets
-from icecream import ic
+
+from extensions.shared_functions import handle_exception, toggle_wait_cursor, select_figure_save_location
 
 matplotlib.use("svg")
 
@@ -83,7 +85,7 @@ class RoseChartWindow(QtWidgets.QMainWindow):
                     valid_columns.append(column)
             return valid_columns
         except Exception as error:
-            handle_exception(error, "rose_chart - filter_azimuth_columns()", "Ops! Ocorreu um erro!")
+            handle_exception(error, "rose_chart - filter_azimuth_columns()", "Ops! Ocorreu um erro!", self)
 
     def ok_button_clicked(self):
         try:
@@ -100,7 +102,7 @@ class RoseChartWindow(QtWidgets.QMainWindow):
 
             toggle_wait_cursor(False)
         except Exception as error:
-            handle_exception(error, "stereogram - ok_button_clicked()", "Ops! Ocorreu um erro ao plotar o gráfico!")
+            handle_exception(error, "stereogram - ok_button_clicked()", "Ops! Ocorreu um erro ao plotar o gráfico!", self)
 
     def load_image(self):
         self.image_btn.setIcon(QtGui.QIcon("plots/rose_chart.png"))
@@ -112,19 +114,12 @@ class RoseChartWindow(QtWidgets.QMainWindow):
 
     def save_button_clicked(self):
         try:
-            file_name, file_type = QtWidgets.QFileDialog.getSaveFileName(
-                self, caption="Salvar gráfico",
-                filter="Formatos suportados (*.png *.jpg *.svg);;"
-                       "PNG (*.png);;"
-                       "JPG (*.jpg);;"
-                       "SVG (*.svg)"
-            )
-            if file_name == "":
+            file_path, file_extension = select_figure_save_location(self)
+            if not file_path:
                 return
-            file_type = file_name[-3:]
-            plt.savefig(file_name, dpi=300, format=file_type, transparent=True)
+            plt.savefig(file_path, dpi=300, format=file_extension, transparent=True)
         except Exception as error:
-            handle_exception(error, "rose_chart - save_button_clicked()", "Ops! Ocorreu um erro!")
+            handle_exception(error, "rose_chart - save_button_clicked()", "Ops! Ocorreu um erro!", self)
 
 
 def plot_rose_chart(azimuths, mirror=False, number_of_sectors=8):
@@ -170,19 +165,3 @@ def plot_rose_chart(azimuths, mirror=False, number_of_sectors=8):
     if not os.path.exists(plots_folder):
         os.makedirs(plots_folder)
     plt.savefig(f"{plots_folder}/rose_chart.png", dpi=300, format="png", transparent=True)
-
-
-def handle_exception(error, context, message: str = "Ocorreu um erro.", ):
-    toggle_wait_cursor(False)
-    ic(context, error)
-    popup = QtWidgets.QMessageBox(title="Erro", text=message)
-    popup.setWindowIcon(QtGui.QIcon("icons/error.png"))
-    popup.setDetailedText(f"Descrição do erro: {error}\n\nContexto: {context}")
-    popup.exec()
-
-
-def toggle_wait_cursor(activate: bool = True):
-    if activate:
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.CursorShape.WaitCursor)
-    else:
-        QtWidgets.QApplication.restoreOverrideCursor()

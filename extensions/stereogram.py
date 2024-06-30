@@ -10,7 +10,8 @@ import mplstereonet
 import os
 import matplotlib.pyplot as plt
 from PyQt6 import QtCore, QtGui, QtWidgets
-from icecream import ic
+
+from extensions.shared_functions import handle_exception, toggle_wait_cursor, select_figure_save_location
 
 matplotlib.use("svg")
 
@@ -25,10 +26,6 @@ MEASUREMENT_TYPES = {
 }
 
 PLOT_WIDTH = 350
-
-# Strike, dip direction e bearing: 0 - 360°
-# Dip e plunge: 0 - 90°
-# Rake: -180° - 180°
 
 
 class StereogramWindow(QtWidgets.QMainWindow):
@@ -120,7 +117,7 @@ class StereogramWindow(QtWidgets.QMainWindow):
                     valid_columns.append(column)
             return valid_columns
         except Exception as error:
-            handle_exception(error, "stereogram - filter_angle_columns()", "Ops! Ocorreu um erro!")
+            handle_exception(error, "stereogram - filter_angle_columns()", "Ops! Ocorreu um erro!", self)
 
     def measurement_type_selected(self):
         try:
@@ -138,7 +135,7 @@ class StereogramWindow(QtWidgets.QMainWindow):
             else:
                 self.rakes_column_cbx.clear()
         except Exception as error:
-            handle_exception(error, "stereogram - measurement_type_selected()", "Ops! Ocorreu um erro!")
+            handle_exception(error, "stereogram - measurement_type_selected()", "Ops! Ocorreu um erro!", self)
 
     def ok_button_clicked(self):
         try:
@@ -168,10 +165,9 @@ class StereogramWindow(QtWidgets.QMainWindow):
 
             toggle_wait_cursor(False)
         except Exception as error:
-            handle_exception(error, "stereogram - ok_button_clicked()", "Ops! Ocorreu um erro ao plotar o gráfico!")
+            handle_exception(error, "stereogram - ok_button_clicked()", "Ops! Ocorreu um erro ao plotar o gráfico!", self)
 
     def load_image(self):
-
         self.image_btn.setIcon(QtGui.QIcon("plots/stereogram.png"))
         pixmap = QtGui.QPixmap("plots/stereogram.png")
         height = int(pixmap.height() * PLOT_WIDTH / pixmap.width())
@@ -181,33 +177,29 @@ class StereogramWindow(QtWidgets.QMainWindow):
 
     def save_button_clicked(self):
         try:
-            file_name, file_type = QtWidgets.QFileDialog.getSaveFileName(
-                self, caption="Salvar gráfico",
-                filter="Formatos suportados (*.png *.jpg *.svg);;"
-                       "PNG (*.png);;"
-                       "JPG (*.jpg);;"
-                       "SVG (*.svg)"
-            )
-            if file_name == "":
+            file_path, file_extension = select_figure_save_location(self)
+            if not file_path:
                 return
-            file_type = file_name[-3:]
-            plt.savefig(file_name, dpi=300, format=file_type, transparent=True)
+            plt.savefig(file_path, dpi=300, format=file_extension, transparent=True)
         except Exception as error:
-            handle_exception(error, "stereogram - save_button_clicked()", "Ops! Ocorreu um erro!")
+            handle_exception(error, "stereogram - save_button_clicked()", "Ops! Ocorreu um erro!", self)
 
 
-def plot_stereogram(azimuths, dips, rakes: str = None, plot_type: str = "poles", plane_azimuth_type: str = "strike"):
+def plot_stereogram(azimuths: numpy.array, dips: numpy.array, rakes: numpy.array = None, plot_type: str = "poles", plane_azimuth_type: str = "strike") -> None:
+    """
+    :param azimuths: Array contendo os azimutes (strikes, dip directions ou bearings)
+    :param dips: Array contendo os ângulos de mergulho (dips ou plunges)
+    :param rakes: Array contendo os rakes/pitches
+    :param plot_type: O tipo de plotagem ("planes", "poles", "lines" ou "rakes")
+    :param plane_azimuth_type: O tipo de azimute usado na medida dos planos ("strike" ou "dip direction")
+    :return: Nada.
+    """
 
-    if plot_type not in ("planes", "poles", "lines", "rakes"):
-        raise ValueError("plot_type deve ser \"poles\", \"lines\" ou \"rakes\".")
-    if plane_azimuth_type not in ("strike", "dip direction"):
-        raise ValueError("azimuth_type deve ser \"strike\", \"dip direction\" ou \"bearing\".")
     if rakes is not None and not (len(azimuths) == len(dips) == len(rakes)):
         raise IndexError(f"A quantidade de azimutes, mergulhos e rakes não é a mesma (azimuths={len(azimuths)}, dips={len(dips)}, rakes={len(rakes)}).")
     elif rakes is None and not (len(azimuths) == len(dips)):
         raise IndexError(f"A quantidade de azimutes e mergulhos não é a mesma (azimuths={len(azimuths)}, dips={len(dips)}).")
 
-    # Cria e estiliza a figura base
     fig, ax = mplstereonet.subplots(figsize=[5, 5], projection="stereonet")
     ax.set_facecolor('white')
     ax.set_azimuth_ticks([])
@@ -222,9 +214,11 @@ def plot_stereogram(azimuths, dips, rakes: str = None, plot_type: str = "poles",
         ax.pole(azimuths, dips, color="black")
     elif plot_type == "lines":
         ax.line(dips, azimuths, color="black")
-    else:
+    elif plot_type == "rakes":
         ax.plane(azimuths, dips, color="black")
         ax.rake(azimuths, dips, rakes, color="black")
+    else:
+        raise ValueError("plot_type deve ser \"poles\", \"lines\" ou \"rakes\".")
 
     labels = ['N', 'E', 'S', 'W']
     lbl_angles = numpy.arange(0, 360, 360 / len(labels))
@@ -237,19 +231,3 @@ def plot_stereogram(azimuths, dips, rakes: str = None, plot_type: str = "poles",
     if not os.path.exists(plots_folder):
         os.makedirs(plots_folder)
     plt.savefig(f"{plots_folder}/stereogram.png", dpi=300, format="png", transparent=True)
-
-
-def handle_exception(error, context, message: str = "Ocorreu um erro.", ):
-    toggle_wait_cursor(False)
-    ic(context, error)
-    popup = QtWidgets.QMessageBox(title="Erro", text=message)
-    popup.setWindowIcon(QtGui.QIcon("icons/error.png"))
-    popup.setDetailedText(f"Descrição do erro: {error}\n\nContexto: {context}")
-    popup.exec()
-
-
-def toggle_wait_cursor(activate: bool = True):
-    if activate:
-        QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.CursorShape.WaitCursor)
-    else:
-        QtWidgets.QApplication.restoreOverrideCursor()
