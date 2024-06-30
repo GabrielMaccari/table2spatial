@@ -138,7 +138,9 @@ class ListRow(QtWidgets.QWidget):
         self.column_lbl.setGeometry(5, 0, 225, 30)
 
         self.dtype_cbx = QtWidgets.QComboBox(self)
-        self.dtype_cbx.setGeometry(240, 4, 120, 22 if OS.startswith("Win") else 26)
+        y = 4 if OS.startswith("Windows") else 2
+        h = 22 if OS.startswith("Windows") else 26
+        self.dtype_cbx.setGeometry(240, y, 120, h)
 
         if self.dtype == "geometry":
             self.dtype_cbx.addItems(["Point(X,Y)"])

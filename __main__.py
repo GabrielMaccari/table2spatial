@@ -23,7 +23,7 @@ class App(QApplication):
 
 if __name__ == '__main__':
     app = App(sys.argv)
-    if OS.startswith("Windows-11") or OS.startswith("Windows-10"):
+    if OS.startswith("Windows"):
         app.setStyle("windowsvista")
         with open('style/win11_light.qss', 'r') as f:
             style = f.read()
