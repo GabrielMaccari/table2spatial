@@ -40,7 +40,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.layout.addWidget(self.graph_button, 0, 4, 1, 1)
 
         self.graph_stereogram_action = self.graph_button.click_menu.addAction("Estereograma")
-        #self.graph_rosediagram_action = self.graph_button.click_menu.addAction("Diagrama de roseta")
+        self.graph_rosediagram_action = self.graph_button.click_menu.addAction("Diagrama de roseta")
 
         # PAGINADOR
         self.frame_stack = QtWidgets.QStackedWidget(self)

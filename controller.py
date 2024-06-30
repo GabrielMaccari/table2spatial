@@ -2,6 +2,7 @@
 """
 @author: Gabriel Maccari
 """
+
 import pandas
 from PyQt6 import QtCore, QtGui, QtWidgets
 from icecream import ic
@@ -10,6 +11,7 @@ from model import DataHandler, CRS_DICT, DATETIME_FORMATS, get_dtype_key
 from view import MainWindow, ListRow, ListWindow, center_window_on_point
 from dialogs import show_popup, show_file_dialog, show_selection_dialog, show_input_dialog, show_question_dialog
 from extensions.stereogram import StereogramWindow
+from extensions.rose_chart import RoseChartWindow
 
 
 class UIController:
@@ -341,8 +343,14 @@ class UIController:
     def graph_button_clicked(self):
         try:
             action = self.view.graph_button.click_menu.exec(self.view.graph_button.mapToGlobal(self.view.graph_button.rect().bottomLeft()))
+
             if action is self.view.graph_stereogram_action:
                 graph_window = StereogramWindow(self.view, pandas.DataFrame(self.model.gdf))
+                graph_window.show()
+                center_window_on_point(graph_window, graph_window.parent.geometry().center())
+
+            elif action is self.view.graph_rosediagram_action:
+                graph_window = RoseChartWindow(self.view, pandas.DataFrame(self.model.gdf))
                 graph_window.show()
                 center_window_on_point(graph_window, graph_window.parent.geometry().center())
 

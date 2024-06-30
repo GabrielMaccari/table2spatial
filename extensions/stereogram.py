@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+"""
+@author: Gabriel Maccari
+"""
+
 import matplotlib
 import numpy
 import pandas
@@ -125,6 +130,8 @@ class StereogramWindow(QtWidgets.QMainWindow):
             self.dips_column_lbl.setText(msr_components[1]+"s:")
             self.rakes_column_lbl.setEnabled(len(msr_components) > 2)
             self.rakes_column_cbx.setEnabled(len(msr_components) > 2)
+            if not msr_type.startswith("Planos"):
+                self.plot_poles_chk.setChecked(False)
             self.plot_poles_chk.setEnabled(msr_type.startswith("Planos"))
             if len(msr_components) > 2:
                 self.rakes_column_cbx.addItems(self.filter_angle_columns("rake"))
@@ -165,12 +172,12 @@ class StereogramWindow(QtWidgets.QMainWindow):
 
     def load_image(self):
 
-        self.image_btn.setIcon(QtGui.QIcon("plots/plot.png"))
-        pixmap = QtGui.QPixmap("plots/plot.png")
+        self.image_btn.setIcon(QtGui.QIcon("plots/stereogram.png"))
+        pixmap = QtGui.QPixmap("plots/stereogram.png")
         height = int(pixmap.height() * PLOT_WIDTH / pixmap.width())
         self.image_btn.setIconSize(QtCore.QSize(PLOT_WIDTH, height))
         self.image_btn.resize(PLOT_WIDTH, height)
-        self.setFixedSize(self.geometry().width(), self.geometry().height())
+        # self.setFixedSize(self.geometry().width(), self.geometry().height())
 
     def save_button_clicked(self):
         try:
@@ -187,11 +194,6 @@ class StereogramWindow(QtWidgets.QMainWindow):
             plt.savefig(file_name, dpi=300, format=file_type, transparent=True)
         except Exception as error:
             handle_exception(error, "stereogram - save_button_clicked()", "Ops! Ocorreu um erro!")
-
-    def center_to_parent(self):
-        self.setFixedSize(self.geometry().width(), self.geometry().height())
-        self.geometry().moveCenter(self.parent.geometry().center())
-        self.move(self.parent.geometry().topLeft())
 
 
 def plot_stereogram(azimuths, dips, rakes: str = None, plot_type: str = "poles", plane_azimuth_type: str = "strike"):
@@ -234,28 +236,15 @@ def plot_stereogram(azimuths, dips, rakes: str = None, plot_type: str = "poles",
     plots_folder = os.getcwd() + "/plots"
     if not os.path.exists(plots_folder):
         os.makedirs(plots_folder)
-    plt.savefig(f"{plots_folder}/plot.png", dpi=300, format="png", transparent=True)
+    plt.savefig(f"{plots_folder}/stereogram.png", dpi=300, format="png", transparent=True)
 
 
 def handle_exception(error, context, message: str = "Ocorreu um erro.", ):
     toggle_wait_cursor(False)
     ic(context, error)
-    show_popup(f"{message}", "error", f"Descrição do erro: {error}\n\nContexto: {context}")
-
-
-def show_popup(message: str, msg_type: str = "notification", details: str | None = None):
-    title = "Erro" if msg_type == "error" else "Notificação"
-    icon = QtGui.QIcon("icons/error.png" if msg_type == "error" else "icons/info.png")
-
-    popup = QtWidgets.QMessageBox()
-
-    popup.setText(message)
-    popup.setWindowTitle(title)
-    popup.setWindowIcon(icon)
-
-    if details is not None:
-        popup.setDetailedText(details)
-
+    popup = QtWidgets.QMessageBox(title="Erro", text=message)
+    popup.setWindowIcon(QtGui.QIcon("icons/error.png"))
+    popup.setDetailedText(f"Descrição do erro: {error}\n\nContexto: {context}")
     popup.exec()
 
 
