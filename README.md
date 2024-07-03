@@ -74,7 +74,11 @@ No exemplo abaixo, a coluna **Cod_ponto** é usada para interligar as linhas das
 | EX004     | -27,19588 | -48,76274 | 25/05/2022 |     Não     |    0     |                  |                   |
 
 ### 3. Reprojetando os Pontos para Outro SRC
-Em breve...
+É possível reprojetar uma tabela de pontos usando o table2spatial. Para isso, depois de ter importado sua tabela, clique no botão <img src="https://github.com/FrostPredator/table2spatial/assets/114439033/1ad5a27e-d09b-4909-8e93-7083ea55cdf4" width="20px">, na barra de ferramentas do programa. Uma janela aparecerá, mostrando o SRC atual do arquivo e uma caixa de seleção para escolha do novo SRC. Você pode digitar os primeiros caracteres do nome de um SRC nessa caixa para encontrá-lo mais facilmente. Clique em OK após selecionar o SRC para reprojetar.
+
+<img src="https://github.com/FrostPredator/table2spatial/assets/114439033/6f10bf7e-33fa-481e-8fca-d421cd3ffb59" width="500px">
+
+**Obs:** A reprojeção afeta apenas a geometria interna do arquivo (que aparece com o nome "geometry" na lista de colunas) e não modifica os dados contidos nas colunas de coordenadas que foram selecionadas ao importar a tabela no table2spatial.
 
 ### 4. Exportando um Arquivo Vetorial
 Em breve...
