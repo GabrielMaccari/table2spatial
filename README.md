@@ -37,6 +37,12 @@ Com os dados devidamente organizados, clique no botão <img src="https://github.
 
 <img src="https://github.com/FrostPredator/table2spatial/assets/114439033/818413b5-7ecd-47bf-ba85-0805d256501e" width="300">
 
+**Obs:** Apenas colunas com dados exclusivamente numéricos dentro do intervalo esperado para cada coordenada aparecerão como opções para X e Y nessa interface. Os intervalos aceitos para cada coordenada são conforme abaixo.
+
+- **Latitude:** -90 a 90°
+- **Longitude:** -180 a 180°
+- **Northing e Easting:** Área de uso do SRC selecionado (veja em [EPSG.io](https://www.epsg.io)). 
+
 As colunas da tabela então aparecerão em uma lista na interface do table2spatial. Você pode converter os tipos de dados de cada coluna a partir dessa interface, selecionando-os nas caixas de opções à direita do nome da coluna, e também pode excluir e renomear colunas clicando com o botão direito sobre elas.
 
 <img src="https://github.com/FrostPredator/table2spatial/assets/114439033/ace5366a-0d40-4ae9-b964-5f31295df0f8" width="300">
@@ -87,6 +93,4 @@ Em breve...
 Em breve...
 
 ## Atribuições
-@ 2024 Gabriel Maccari
-
 Icons by [icons8](https://icons8.com/)
