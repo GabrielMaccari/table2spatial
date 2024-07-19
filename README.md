@@ -47,6 +47,8 @@ As colunas da tabela então aparecerão em uma lista na interface do table2spati
 
 <img src="https://github.com/FrostPredator/table2spatial/assets/114439033/ace5366a-0d40-4ae9-b964-5f31295df0f8" width="300">
 
+**Obs:** Uma coluna chamada _geometry_ aparecerá na lista de colunas. Ela contém a geometria dos pontos, isto é, os pares de coordenadas para cada ponto. Quando você reprojeta os pontos entre SRCs no table2spatial, as coordenadas são modificadas internamente nessa coluna.
+
 ### 2. Mesclando Planilhas de um Arquivo
 Você pode mesclar múltiplas planilhas (abas) de um mesmo arquivo, desde que haja uma coluna identificadora em comum entre elas. Para realizar a mesclagem de planilhas, clique no botão <img src="https://github.com/FrostPredator/table2spatial/assets/114439033/5084056c-4e26-41e7-9c90-7de734b0ed49" width="20">, na barra de ferramentas, e então selecione a coluna identificadora. As planilhas serão mescladas com base na coluna selecionada, e um aviso será exibido, relatando o sucesso.
 
@@ -84,10 +86,16 @@ No exemplo abaixo, a coluna **Cod_ponto** é usada para interligar as linhas das
 
 <img src="https://github.com/FrostPredator/table2spatial/assets/114439033/6f10bf7e-33fa-481e-8fca-d421cd3ffb59" width="500px">
 
-**Obs:** A reprojeção afeta apenas a geometria interna do arquivo (que aparece com o nome "geometry" na lista de colunas) e não modifica os dados contidos nas colunas de coordenadas que foram selecionadas ao importar a tabela no table2spatial.
+**Obs:** A reprojeção afeta apenas a geometria interna do arquivo vetorial a ser exportado (que aparece com o nome "geometry" na lista de colunas) e não modifica os dados contidos nas colunas de coordenadas que foram selecionadas ao importar a tabela no table2spatial.
 
 ### 4. Exportando um Arquivo Vetorial
-Em breve...
+Você pode exportar a tabela como um arquivo vetorial de pontos, em formato GeoPackage, GeoJSON ou Shapefile. Para isso, clique no botão <img src="https://github.com/user-attachments/assets/ceb20ff4-f859-4f3f-8c2a-2ac02db60779" width="20px">, na barra de ferramentas. Uma caixa de diálogo aparecerá para escolher o formato de saída e salvar o arquivo. Caso o formato de saída seja GeoPackage, uma outra janela aparecerá em seguida para definir o nome da camada.
+
+**Observações:**
+- Você pode salvar múltiplas camadas dentro de um mesmo arquivo GeoPackage. Basta selecionar o mesmo arquivo ao exportar e então especificar um nome diferente para a nova camada a ser inserida. **Caso você defina um nome de camada que já existe dentro do arquivo, ela será substituída**.
+- Caso exporte o arquivo como GeoJSON, não há garantia de que seu programa de SIG (QGIS, ArcGIS, etc.) importará o arquivo com os tipos de dados que você especificou para cada coluna/atributo, pois esses tipos de dados não ficam definidos dentro do arquivo.
+- Ao exportar como Shapefile, todos os nomes de colunas/atributos serão cortados para um limite de 10 caracteres que é estabelecido pelo formato Shapefile.
+- O formato Shapefile não suporta campos de data e hora (Datetime). Logo, ocorrerá um erro ao tentar exportar para Shapefile uma tabela de pontos com uma coluna Datetime. Para resolver, exporte para outro formato ou converta a coluna de data e hora para String.
 
 ### 5. Criando Estereogramas e Diagramas de Roseta
 Em breve...
