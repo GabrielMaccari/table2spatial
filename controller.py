@@ -93,55 +93,75 @@ class UIController:
 
         self.fill_xy_combos()
 
+        self.view.z_cbx.setEnabled(False)
+        self.view.z_ok_icon.setEnabled(False)
+
         # Reconecta os componentes
         self.connect_import_screen_components(True)
 
-        self.check_if_selected_xy_is_valid()
+        self.check_if_selected_xyz_is_valid()
 
     def connect_import_screen_components(self, connect: bool):
         if connect:
             self.view.sheet_cbx.currentTextChanged.connect(self.sheet_selected)
             self.view.crs_cbx.currentTextChanged.connect(self.crs_selected)
-            self.view.dms_chk.clicked.connect(self.check_if_selected_xy_is_valid)
-            self.view.x_cbx.currentTextChanged.connect(self.check_if_selected_xy_is_valid)
-            self.view.y_cbx.currentTextChanged.connect(self.check_if_selected_xy_is_valid)
+            self.view.dms_chk.clicked.connect(self.check_if_selected_xyz_is_valid)
+            self.view.x_cbx.currentTextChanged.connect(self.check_if_selected_xyz_is_valid)
+            self.view.y_cbx.currentTextChanged.connect(self.check_if_selected_xyz_is_valid)
+            self.view.z_cbx.currentTextChanged.connect(self.check_if_selected_xyz_is_valid)
         else:
             self.view.sheet_cbx.disconnect()
             self.view.crs_cbx.disconnect()
             self.view.dms_chk.disconnect()
             self.view.x_cbx.disconnect()
             self.view.y_cbx.disconnect()
+            self.view.z_cbx.disconnect()
 
     def fill_xy_combos(self):
         self.view.x_cbx.clear()
         self.view.y_cbx.clear()
+        self.view.z_cbx.clear()
+
         self.view.x_cbx.addItems(self.model.gdf.columns)
         self.view.y_cbx.addItems(self.model.gdf.columns)
+        self.view.z_cbx.addItems(self.model.gdf.columns)
+
         self.auto_select_xy_columns()
 
     def auto_select_xy_columns(self):
         crs_key = self.view.crs_cbx.currentText()
-        crs_type = str(CRS_DICT[crs_key]["type"])
+        crs_type = CRS_DICT[crs_key]["type"]
         x = self.model.search_coordinates_column_by_name("x", crs_type, self.model.gdf.columns)
         self.view.x_cbx.setCurrentText(x)
         y = self.model.search_coordinates_column_by_name("y", crs_type, self.model.gdf.columns)
         self.view.y_cbx.setCurrentText(y)
 
-    def check_if_selected_xy_is_valid(self):
+        if crs_type == "Geographic 3D CRS":
+            z = self.model.search_coordinates_column_by_name("z", crs_type, self.model.gdf.columns)
+            self.view.z_cbx.setCurrentText(z)
+
+    def check_if_selected_xyz_is_valid(self):
         crs_key = self.view.crs_cbx.currentText()
+        crs_type = CRS_DICT[crs_key]["type"]
         dms_format = self.view.dms_chk.isChecked()
-        valid_x_cols, valid_y_cols = self.model.filter_coordinates_columns(crs_key, dms_format)
+        valid_x_cols, valid_y_cols, valid_z_cols = self.model.filter_coordinates_columns(crs_key, dms_format)
 
         selected_x = self.view.x_cbx.currentText()
         selected_y = self.view.y_cbx.currentText()
+        selected_z = self.view.z_cbx.currentText()
 
         x_ok = True if selected_x in valid_x_cols else False
         y_ok = True if selected_y in valid_y_cols else False
+        z_ok = True if selected_z in valid_z_cols else False
 
         self.view.x_ok_icon.setIcon(QtGui.QIcon("icons/ok.png" if x_ok else "icons/not_ok.png"))
         self.view.y_ok_icon.setIcon(QtGui.QIcon("icons/ok.png" if y_ok else "icons/not_ok.png"))
+        self.view.z_ok_icon.setIcon(QtGui.QIcon("icons/ok.png" if z_ok else "icons/not_ok.png"))
 
-        self.view.import_ok_btn.setEnabled(True if x_ok and y_ok else False)
+        if crs_type == "Geographic 3D CRS":
+            self.view.import_ok_btn.setEnabled(True if x_ok and y_ok and z_ok else False)
+        else:
+            self.view.import_ok_btn.setEnabled(True if x_ok and y_ok else False)
 
     def sheet_selected(self):
         try:
@@ -149,15 +169,19 @@ class UIController:
             sheet = self.view.sheet_cbx.currentText()
             self.model.read_excel_sheet(sheet)
             self.fill_xy_combos()
-            self.check_if_selected_xy_is_valid()
+            self.check_if_selected_xyz_is_valid()
         except Exception as error:
             self.handle_exception(error, "sheet_selected()")
 
     def crs_selected(self):
         try:
             toggle_wait_cursor(True)
+            crs_key = self.view.crs_cbx.currentText()
+            crs_type = CRS_DICT[crs_key]["type"]
+            self.view.z_cbx.setEnabled(True if crs_type == "Geographic 3D CRS" else False)
+            self.view.z_ok_icon.setEnabled(True if crs_type == "Geographic 3D CRS" else False)
             self.auto_select_xy_columns()
-            self.check_if_selected_xy_is_valid()
+            self.check_if_selected_xyz_is_valid()
             toggle_wait_cursor(False)
         except Exception as error:
             self.handle_exception(error, "crs_selected()")
@@ -167,18 +191,24 @@ class UIController:
             toggle_wait_cursor(True)
 
             crs_key = self.view.crs_cbx.currentText()
+            crs_type = CRS_DICT[crs_key]["type"]
             x_column = self.view.x_cbx.currentText()
             y_column = self.view.y_cbx.currentText()
+            z_column = (self.view.z_cbx.currentText() if crs_type == "Geographic 3D CRS" else None)
             dms = self.view.dms_chk.isChecked()
-            self.model.set_geodataframe_geometry(crs_key, x_column, y_column, dms)
+
+            self.model.set_geodataframe_geometry(crs_key, x_column, y_column, z_column, dms)
             self.update_column_list()
             self.view.switch_stack(0)
 
-            self.view.merge_button.setEnabled(
-                True if self.model.excel_file and len(self.model.excel_file.sheet_names) > 1 else False)
+            self.view.merge_button.setEnabled(True if self.model.excel_file and len(self.model.excel_file.sheet_names) > 1 else False)
             self.view.reproject_button.setEnabled(True)
             self.view.export_button.setEnabled(True)
             self.view.graph_button.setEnabled(True)
+
+            crs_label = f"{self.model.gdf.crs.name} ({self.model.gdf.crs.type_name})"
+            label = f"Pontos: {len(self.model.gdf.index)}    SRC: {crs_label}"
+            self.view.bottom_label.setText(label if len(label) < 85 else f"Pontos: {len(self.model.gdf.index)}")
 
             toggle_wait_cursor(False)
         except Exception as error:
@@ -304,7 +334,13 @@ class UIController:
                 return
 
             toggle_wait_cursor(True)
+
             self.model.reproject_geodataframe(target_crs)
+
+            crs_label = f"{self.model.gdf.crs.name} ({self.model.gdf.crs.type_name})"
+            label = f"Pontos: {len(self.model.gdf.index)}    SRC: {crs_label})"
+            self.view.bottom_label.setText(label if len(label) < 87 else f"Pontos: {len(self.model.gdf.index)}")
+
             toggle_wait_cursor(False)
             show_popup("Pontos reprojetados com sucesso!\n\nObs: As coordenadas contidas na tabela não foram alteradas.",
                        parent=self.view)

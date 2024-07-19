@@ -13,15 +13,27 @@ from icecream import ic
 
 # geopandas.options.io_engine = "pyogrio" #  pyogrio é melhor que fiona, mas não funciona com o pyinstaller
 
+crs_types = {
+    "PJType.GEOGRAPHIC_2D_CRS": "Geographic 2D CRS",
+    "PJType.GEOGRAPHIC_3D_CRS": "Geographic 3D CRS",
+    "PJType.PROJECTED_CRS": "Projected CRS",
+}
 CRS_DICT = {}
-for crs_info in pyproj.database.query_crs_info(pj_types=["GEOGRAPHIC_2D_CRS", "PROJECTED_CRS"]):
-    key = f"{crs_info.name} ({crs_info.auth_name}:{crs_info.code})"
+for crs_info in pyproj.database.query_crs_info(pj_types=["GEOGRAPHIC_2D_CRS", "PROJECTED_CRS", "GEOGRAPHIC_3D_CRS"]):
+    if crs_info.auth_name.startswith("IAU"):
+        continue
+
+    crs_type = crs_types[str(crs_info.type)]
+    if crs_type == "Geographic 3D CRS":
+        key = f"{crs_info.name} (3D) ({crs_info.auth_name}:{crs_info.code})"
+    else:
+        key = f"{crs_info.name} ({crs_info.auth_name}:{crs_info.code})"
+
     CRS_DICT[key] = {
         "name": crs_info.name,
         "auth_name": crs_info.auth_name,
         "code": crs_info.code,
-        "type": crs_info.type,
-        "area_of_use": crs_info.area_of_use
+        "type": crs_type
     }
 del crs_info, key
 
@@ -105,7 +117,7 @@ class DataHandler:
         data = open(path, "r").read(4096)
         sep = str(sniffer.sniff(data).delimiter)
 
-        # TODO Retirar isso caso seja implementada alguma seleção manual de separador decimal
+        # Retirar isso caso seja implementada alguma seleção manual de separador decimal
         if sep == ',':
             decimal = '.'
 
@@ -140,17 +152,19 @@ class DataHandler:
         coordenadas do SRC.
         :param crs_key: A chave para o dicionário de SRCs (CRS_DICT), no formato "name (auth:code)". Ex: "SIRGAS 2000 (EPSG:4674)".
         :param dms_format: Caso as coordenadas estejam em formato GMS (GG°MM'SS.ssss"H)
-        :return: Listas contendo os rótulos das colunas válidas para x e y, respectivamente.
+        :return: Listas contendo os rótulos das colunas válidas para x, y e z, respectivamente.
         """
         x_columns, y_columns = [], []
 
+        z_columns = self.gdf.select_dtypes(include='number').columns.tolist()
+
         if dms_format:
             x_columns, y_columns = self.filter_dms_coordinates_columns()
-            return x_columns, y_columns
+            return x_columns, y_columns, z_columns
 
         crs = pyproj.CRS.from_authority(CRS_DICT[crs_key]["auth_name"], CRS_DICT[crs_key]["code"])
 
-        if str(CRS_DICT[crs_key]["type"]) == "PJType.GEOGRAPHIC_2D_CRS":
+        if CRS_DICT[crs_key]["type"] in ["Geographic 2D CRS", "Geographic 3D CRS"]:
             x_min, y_min, x_max, y_max = crs.area_of_use.bounds
         else:
             transformer = pyproj.Transformer.from_crs(crs.geodetic_crs, crs, always_xy=True)
@@ -166,7 +180,7 @@ class DataHandler:
             except (ValueError, TypeError):
                 continue
 
-        return x_columns, y_columns
+        return x_columns, y_columns, z_columns
 
     def filter_dms_coordinates_columns(self):
         """
@@ -218,28 +232,33 @@ class DataHandler:
         """
         Função que seleciona uma coluna que provavelmente contém coordenadas com base no nome.
         :param axis: O eixo das coordenadas ("y": latitude/northing, "x": longitude/easting).
-        :param crs_type: O tipo de SRC ("PJType.GEOGRAPHIC_2D_CRS": geográfico, "PJType.PROJECTED_CRS": projetado).
+        :param crs_type: O tipo de SRC ("Geographic 2D CRS", "Geographic 3D CRS" ou "Projected CRS").
         :param column_options: Uma lista contendo os rótulos das colunas a serem consideradas.
         :return: O rótulo da coluna que provavelmente contém as coordenadas (str) ou None, se nenhuma coluna provável for encontrada.
         """
         options = {
-            ("y", "PJType.GEOGRAPHIC_2D_CRS"): ("latitude", "lat", "y"),
-            ("y", "PJType.PROJECTED_CRS"): ("northing", "utm_n", "utmn", "n", "utmn (m)", "utm_n (m)", "y"),
-            ("x", "PJType.GEOGRAPHIC_2D_CRS"): ("longitude", "lon", "x"),
-            ("x", "PJType.PROJECTED_CRS"): ("easting", "utm_e", "utme", "e", "utme (m)", "utm_e (m)", "x")
+            ("y", "Geographic 2D CRS"): ("latitude", "lat", "y"),
+            ("x", "Geographic 2D CRS"): ("longitude", "lon", "x"),
+            ("y", "Geographic 3D CRS"): ("latitude", "lat", "y"),
+            ("x", "Geographic 3D CRS"): ("longitude", "lon", "x"),
+            ("z", "Geographic 3D CRS"): ("altitude", "alt", "z", "cota"),
+            ("x", "Projected CRS"): ("easting", "utm_e", "utme", "e", "utme (m)", "utm_e (m)", "x"),
+            ("y", "Projected CRS"): ("northing", "utm_n", "utmn", "n", "utmn (m)", "utm_n (m)", "y")
         }
 
         common_names = options[(axis, crs_type)]
 
         return next((col for col in column_options if str(col).lower() in common_names), None)
 
-    def set_geodataframe_geometry(self, crs_key: str, x_column: str, y_column: str, dms: bool) -> None:
+    def set_geodataframe_geometry(self, crs_key: str, x_column: str, y_column: str, z_column: str = None, dms: bool = False) -> None:
         """
         Define a geometria e o crs do GeoDataFrame contido no adributo "gdf" da classe. Também define os atributos
         "crs_key", "x_column" e "y_column" da classe com base nos parâmetros dados.
         :param crs_key: A chave para o dicionário de SRCs (CRS_DICT), no formato "name (auth:code)". Ex: "SIRGAS 2000 (EPSG:4674)".
         :param x_column: O rótulo da coluna que contém as coordenadas do eixo X.
         :param y_column: O rótulo da coluna que contém as coordenadas do eixo Y.
+        :param z_column: O rótulo da coluna que contém as coordenadas do eixo Z.
+        :param dms: True caso as coordenadas estejam em formato Graus, Minutos e Segundos. Do contrário, False.
         """
         crs = pyproj.CRS.from_authority(CRS_DICT[crs_key]["auth_name"], CRS_DICT[crs_key]["code"])
 
@@ -248,7 +267,10 @@ class DataHandler:
         else:
             x, y = self.gdf[x_column], self.gdf[y_column]
 
-        geometry = geopandas.points_from_xy(x, y, crs=crs)
+        z = self.gdf[z_column] if z_column is not None else None
+
+        geometry = geopandas.points_from_xy(x, y, z, crs=crs)
+
         self.gdf = geopandas.GeoDataFrame(self.gdf, geometry=geometry, crs=crs)
 
         self.x_column, self.y_column = x_column, y_column

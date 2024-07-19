@@ -73,6 +73,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.y_cbx = QtWidgets.QComboBox(self.import_stack)
         self.y_ok_icon = QtWidgets.QPushButton(icon=QtGui.QIcon("icons/circle.png"))
         self.y_ok_icon.setFlat(True)
+        self.z_lbl = QtWidgets.QLabel("Z:", self.import_stack)
+        self.z_cbx = QtWidgets.QComboBox(self.import_stack)
+        self.z_cbx.setEnabled(False)
+        self.z_ok_icon = QtWidgets.QPushButton(icon=QtGui.QIcon("icons/circle.png"))
+        self.z_ok_icon.setFlat(True)
+        self.z_ok_icon.setEnabled(False)
         self.import_ok_btn = QtWidgets.QPushButton("OK", self.import_stack)
         self.import_cancel_btn = QtWidgets.QPushButton("Cancelar", self.import_stack)
         row = 0
@@ -96,15 +102,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self.import_stack_layout.addWidget(self.y_cbx, row, 1, 1, 18)
         self.import_stack_layout.addWidget(self.y_ok_icon, row, 19, 1, 1)
         row += 1
+        self.import_stack_layout.addWidget(self.z_lbl, row, 0, 1, 1)
+        self.import_stack_layout.addWidget(self.z_cbx, row, 1, 1, 18)
+        self.import_stack_layout.addWidget(self.z_ok_icon, row, 19, 1, 1)
+        row += 1
         self.import_stack_layout.addWidget(self.import_ok_btn, row, 0, 1, 4)
         self.import_stack_layout.addWidget(self.import_cancel_btn, row, 4, 1, 4)
         row += 1
         self.import_stack_layout.setRowStretch(row, 1)
 
         # RÓTULO INFERIOR
-        self.copyright_label = QtWidgets.QLabel("©2024 Gabriel Maccari / Icons by www.icons8.com")
-        self.copyright_label.setStyleSheet("font-size: 8pt")
-        self.layout.addWidget(self.copyright_label, 22, 0, 1, 8)
+        self.bottom_label = QtWidgets.QLabel("")
+        self.bottom_label.setStyleSheet("font-size: 8pt")
+        self.layout.addWidget(self.bottom_label, 22, 0, 1, 8)
 
         # Conexões dos botões de cancelar de cada página
         self.import_cancel_btn.clicked.connect(self.switch_stack)
@@ -143,7 +153,7 @@ class ListRow(QtWidgets.QWidget):
         self.dtype_cbx.setGeometry(240, y, 120, h)
 
         if self.dtype == "geometry":
-            self.dtype_cbx.addItems(["Point(X,Y)"])
+            self.dtype_cbx.addItems(["POINT"])
         else:
             self.dtype_cbx.addItems(DTYPES_DICT.keys())
             self.dtype_cbx.setCurrentText(get_dtype_key(self.dtype))

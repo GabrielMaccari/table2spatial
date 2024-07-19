@@ -144,15 +144,15 @@ class StereogramWindow(QtWidgets.QMainWindow):
             msr_type = self.measurement_type_cbx.currentText()
             plot_poles = self.plot_poles_chk.isChecked()
 
-            azimuths = self.df[self.azimuths_column_cbx.currentText()].values.copy()
-            dips = self.df[self.dips_column_cbx.currentText()].values.copy()
+            azimuths = self.df[self.azimuths_column_cbx.currentText()].to_numpy()
+            dips = self.df[self.dips_column_cbx.currentText()].to_numpy()
             rakes = None
 
             if msr_type.startswith("Planos"):
                 plot_type = "poles" if plot_poles else "planes"
             elif msr_type.startswith("Linhas em planos"):
                 plot_type = "rakes"
-                rakes = self.df[self.rakes_column_cbx.currentText()].values.copy()
+                rakes = self.df[self.rakes_column_cbx.currentText()].to_numpy()
             else:
                 plot_type = "lines"
 
