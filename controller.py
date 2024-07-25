@@ -33,6 +33,13 @@ class UIController:
 
         self.view.import_ok_btn.clicked.connect(self.import_ok_button_clicked)
 
+        # self.view.target_crs_cbx.currentTextChanged.connect(self.save_coords_checkbox_checked)
+        self.view.save_coords_chk.checkStateChanged.connect(self.save_coords_checkbox_checked)
+        self.view.x_column_name_edt.textChanged.connect(self.check_if_coords_columns_exist)
+        self.view.y_column_name_edt.textChanged.connect(self.check_if_coords_columns_exist)
+        self.view.z_column_name_edt.textChanged.connect(self.check_if_coords_columns_exist)
+        self.view.reproject_ok_btn.clicked.connect(self.reproject_ok_button_clicked)
+
     # AÇÕES DA JANELA PRINCIPAL
     def import_button_clicked(self):
         try:
@@ -86,7 +93,7 @@ class UIController:
             self.model.read_excel_sheet(0)
 
         self.view.crs_cbx.clear()
-        self.view.crs_cbx.addItems(sorted(CRS_DICT))
+        self.view.crs_cbx.addItems(sorted(CRS_DICT.keys()))
         self.view.crs_cbx.setCurrentText("SIRGAS 2000 (EPSG:4674)")
 
         self.view.dms_chk.setChecked(False)
@@ -304,6 +311,7 @@ class UIController:
 
             self.dtypes_list[row] = target_dtype
             self.update_column_list(row)
+
             toggle_wait_cursor(False)
         except Exception as error:
             self.update_column_list(row)
@@ -326,26 +334,120 @@ class UIController:
 
     def reproject_button_clicked(self):
         try:
-            current_crs = self.model.gdf.crs.name
-            target_crs, ok_clicked = show_selection_dialog(
-                message=f"SRC atual: {current_crs}\n\nSelecione o SRC de destino:", items=sorted(CRS_DICT),
-                allow_edit=True, title="Reprojetar pontos", parent=self.view)
-            if not ok_clicked:
-                return
-
             toggle_wait_cursor(True)
 
-            self.model.reproject_geodataframe(target_crs)
+            self.view.switch_stack(2)
+
+            self.view.source_crs_lbl.setText(f"SRC atual: {self.model.crs_key})")
+
+            self.view.target_crs_cbx.addItems(sorted(CRS_DICT.keys()))
+            self.view.target_crs_cbx.setCurrentText("SIRGAS 2000 (EPSG:4674)")
+
+            self.view.save_coords_chk.setChecked(False)
+
+            toggle_wait_cursor(False)
+        except Exception as error:
+            self.handle_exception(error, "reproject_button_clicked()", "Ops! Não foi possível reprojetar os pontos.")
+
+    def save_coords_checkbox_checked(self):
+        try:
+            state = self.view.save_coords_chk.isChecked()
+            crs_type = CRS_DICT[self.view.target_crs_cbx.currentText()]["type"]
+            is_crs_3d = crs_type == "Geographic 3D CRS"
+
+            self.view.x_column_name_edt.setEnabled(state)
+            self.view.y_column_name_edt.setEnabled(state)
+            self.view.z_column_name_edt.setEnabled(state and is_crs_3d)
+
+            self.view.x_column_name_icn.setEnabled(state)
+            self.view.y_column_name_icn.setEnabled(state)
+            self.view.z_column_name_icn.setEnabled(state and is_crs_3d)
+
+            reset_icon = QtGui.QIcon("icons/circle.png")
+
+            if state:
+                self.check_if_coords_columns_exist()
+            else:
+                self.view.x_column_name_icn.setIcon(reset_icon)
+                self.view.y_column_name_icn.setIcon(reset_icon)
+                self.view.z_column_name_icn.setIcon(reset_icon)
+                self.view.reproject_ok_btn.setEnabled(True)
+
+            if not is_crs_3d:
+                self.view.z_column_name_icn.setIcon(reset_icon)
+
+        except Exception as error:
+            self.handle_exception(error, "save_coords_checkbox_checked()", "Ops! Ocorreu um erro.")
+
+    def check_if_coords_columns_exist(self):
+        crs_type = CRS_DICT[self.view.target_crs_cbx.currentText()]["type"]
+
+        edits = [self.view.x_column_name_edt, self.view.y_column_name_edt]
+        buttons = [self.view.x_column_name_icn, self.view.y_column_name_icn]
+        xyz_ok = [False, False]
+
+        if crs_type == "Geographic 3D CRS":
+            edits.append(self.view.z_column_name_edt)
+            buttons.append(self.view.z_column_name_icn)
+            xyz_ok.append(False)
+
+        for i, b in enumerate(xyz_ok):
+            col_name = edits[i].text()
+            btn = buttons[i]
+            if col_name in self.model.gdf.columns:
+                xyz_ok[i] = True
+                btn.setIcon(QtGui.QIcon("icons/alert.png"))
+                btn.setToolTip("A coluna já existe na tabela. Os dados contidos nela serão\n"
+                               "substituídos pelas coordenadas reprojetadas.")
+            elif col_name == "":
+                xyz_ok[i] = False
+                btn.setIcon(QtGui.QIcon("icons/not_ok.png"))
+                btn.setToolTip("Insira um nome para a coluna.")
+            else:
+                xyz_ok[i] = True
+                btn.setIcon(QtGui.QIcon("icons/ok.png"))
+                btn.setToolTip(f"A coluna \"{col_name}\" será criada com\nas coordenadas reprojetadas.")
+
+        self.view.reproject_ok_btn.setEnabled(all(xyz_ok))
+
+    def reproject_ok_button_clicked(self):
+        try:
+            toggle_wait_cursor(True)
+
+            crs_key = self.view.target_crs_cbx.currentText()
+            save_coords = self.view.save_coords_chk.isChecked()
+
+            self.model.reproject_geodataframe(crs_key)
+
+            if save_coords:
+                x_col = self.view.x_column_name_edt.text()
+                y_col = self.view.y_column_name_edt.text()
+
+                self.model.gdf[x_col] = self.model.gdf.geometry.x
+                self.model.gdf[y_col] = self.model.gdf.geometry.y
+
+                if CRS_DICT[crs_key]["type"] == "Geographic 3D CRS":
+                    z_col = self.view.z_column_name_edt.text()
+                    self.model.gdf[z_col] = self.model.gdf.geometry.z
+
+                # Reordena as colunas para que a geometria fique no final
+                if "geometry" in self.model.gdf.columns and self.model.gdf["geometry"].dtype == "geometry":
+                    cols = [col for col in self.model.gdf.columns if col != "geometry"]
+                    cols.append("geometry")
+                    self.model.gdf = self.model.gdf[cols]
+
+            self.update_column_list()
+            self.view.switch_stack()
 
             crs_label = f"{self.model.gdf.crs.name} ({self.model.gdf.crs.type_name})"
             label = f"Pontos: {len(self.model.gdf.index)}    SRC: {crs_label})"
             self.view.bottom_label.setText(label if len(label) < 87 else f"Pontos: {len(self.model.gdf.index)}")
 
             toggle_wait_cursor(False)
-            show_popup("Pontos reprojetados com sucesso!\n\nObs: As coordenadas contidas na tabela não foram alteradas.",
-                       parent=self.view)
+            show_popup("Pontos reprojetados com sucesso!", parent=self.view)
+
         except Exception as error:
-            self.handle_exception(error, "reproject_button_clicked()", "Ops! Não foi possível reprojetar os pontos.")
+            self.handle_exception(error, "reproject_ok_button_clicked()", "Ops! Ocorreu um erro ao reprojetar.")
 
     def export_button_clicked(self):
         try:
@@ -374,7 +476,7 @@ class UIController:
                     return
 
             toggle_wait_cursor(True)
-            self.model.save_to_geospatial_file(file_name, layer_name)
+            self.model.export_geodataframe(file_name, layer_name)
             toggle_wait_cursor(False)
             show_popup("Pontos exportados com sucesso!", parent=self.view)
 

@@ -18,24 +18,19 @@ crs_types = {
     "PJType.GEOGRAPHIC_3D_CRS": "Geographic 3D CRS",
     "PJType.PROJECTED_CRS": "Projected CRS",
 }
-CRS_DICT = {}
-for crs_info in pyproj.database.query_crs_info(pj_types=["GEOGRAPHIC_2D_CRS", "PROJECTED_CRS", "GEOGRAPHIC_3D_CRS"]):
-    if crs_info.auth_name.startswith("IAU"):
-        continue
 
-    crs_type = crs_types[str(crs_info.type)]
-    if crs_type == "Geographic 3D CRS":
-        key = f"{crs_info.name} (3D) ({crs_info.auth_name}:{crs_info.code})"
-    else:
-        key = f"{crs_info.name} ({crs_info.auth_name}:{crs_info.code})"
-
-    CRS_DICT[key] = {
+crs_db = pyproj.database.query_crs_info(pj_types=("GEOGRAPHIC_2D_CRS", "PROJECTED_CRS", "GEOGRAPHIC_3D_CRS"))
+CRS_DICT = {
+    f"{crs_info.name} {'(3D) ' if crs_types[str(crs_info.type)] == 'Geographic 3D CRS' else ''}({crs_info.auth_name}:{crs_info.code})":
+    {
         "name": crs_info.name,
         "auth_name": crs_info.auth_name,
         "code": crs_info.code,
-        "type": crs_type
+        "type": crs_types[str(crs_info.type)]
     }
-del crs_info, key
+    for crs_info in crs_db if not crs_info.auth_name.startswith("IAU")  # Os SRCs da IAU são para outros planetas
+}
+del crs_db
 
 DTYPES_DICT = {
     "String": {
@@ -82,6 +77,7 @@ class DataHandler:
         self.gdf = None
         self.x_column = None
         self.y_column = None
+        self.z_column = None
         self.crs_key = None
 
     def read_excel_file(self, path: str) -> None:
@@ -144,14 +140,13 @@ class DataHandler:
             raise IndexError('A tabela selecionada está vazia ou contém apenas cabeçalhos.')
         return df
 
-    def filter_coordinates_columns(self, crs_key: str, dms_format: bool = False) -> (list[str], list[str]):
+    def filter_coordinates_columns(self, crs_key: str, dms_format: bool = False) -> (list[str], list[str], list[str]):
         """
         Encontra as colunas válidas para coordenadas no GeoDataFrame e retorna uma lista de colunas válidas para x
-        (longitude/easting) e y (latitude/northing). São consideradas colunas válidas aquelas que podem ser convertidas
-        para float e cujos valores estão dentro dos limites esperados para as
-        coordenadas do SRC.
+        (longitude/easting), y (latitude/northing) e z (altitude). São consideradas colunas válidas aquelas que podem
+        ser convertidas para float e cujos valores estão dentro dos limites esperados para as coordenadas do SRC.
         :param crs_key: A chave para o dicionário de SRCs (CRS_DICT), no formato "name (auth:code)". Ex: "SIRGAS 2000 (EPSG:4674)".
-        :param dms_format: Caso as coordenadas estejam em formato GMS (GG°MM'SS.ssss"H)
+        :param dms_format: Booleano indicando se as coordenadas estão em formato GMS (GG°MM'SS.ssss"H) ou não.
         :return: Listas contendo os rótulos das colunas válidas para x, y e z, respectivamente.
         """
         x_columns, y_columns = [], []
@@ -184,8 +179,8 @@ class DataHandler:
 
     def filter_dms_coordinates_columns(self):
         """
-        Encontra as colunas válidas para coordenadas em formato GMS (GG°MM'SS,sss"D) no GeoDataFrame contido no
-        GeoDataFrame e retorna uma lista de colunas válidas para x (longitude) e y (latitude).
+        Encontra as colunas válidas para coordenadas em formato GMS (GG°MM'SS,sss"D) no GeoDataFrame e retorna uma lista
+        de colunas válidas para x (longitude) e y (latitude).
         :return: Listas contendo os rótulos das colunas válidas para x e y, respectivamente.
         """
         y_pattern = re.compile(r"^(\d{1,2})([°º])(\d{1,2})(['’′])(\d{1,2}([.,]\d+)?)([\"”″])([NSns])$")
@@ -228,12 +223,12 @@ class DataHandler:
         return x_columns, y_columns
 
     @staticmethod
-    def search_coordinates_column_by_name(axis: str, crs_type: str, column_options: list[str]) -> str | None:
+    def search_coordinates_column_by_name(axis: str, crs_type: str, column_names: list[str]) -> str | None:
         """
         Função que seleciona uma coluna que provavelmente contém coordenadas com base no nome.
-        :param axis: O eixo das coordenadas ("y": latitude/northing, "x": longitude/easting).
+        :param axis: O eixo das coordenadas ("y": latitude/northing, "x": longitude/easting, "z": altitude).
         :param crs_type: O tipo de SRC ("Geographic 2D CRS", "Geographic 3D CRS" ou "Projected CRS").
-        :param column_options: Uma lista contendo os rótulos das colunas a serem consideradas.
+        :param column_names: Uma lista contendo os rótulos das colunas a serem consideradas.
         :return: O rótulo da coluna que provavelmente contém as coordenadas (str) ou None, se nenhuma coluna provável for encontrada.
         """
         options = {
@@ -248,12 +243,12 @@ class DataHandler:
 
         common_names = options[(axis, crs_type)]
 
-        return next((col for col in column_options if str(col).lower() in common_names), None)
+        return next((col for col in column_names if str(col).lower() in common_names), None)
 
     def set_geodataframe_geometry(self, crs_key: str, x_column: str, y_column: str, z_column: str = None, dms: bool = False) -> None:
         """
         Define a geometria e o crs do GeoDataFrame contido no adributo "gdf" da classe. Também define os atributos
-        "crs_key", "x_column" e "y_column" da classe com base nos parâmetros dados.
+        "crs_key", "x_column", "y_column" e "z_column" da classe com base nos parâmetros dados.
         :param crs_key: A chave para o dicionário de SRCs (CRS_DICT), no formato "name (auth:code)". Ex: "SIRGAS 2000 (EPSG:4674)".
         :param x_column: O rótulo da coluna que contém as coordenadas do eixo X.
         :param y_column: O rótulo da coluna que contém as coordenadas do eixo Y.
@@ -273,7 +268,7 @@ class DataHandler:
 
         self.gdf = geopandas.GeoDataFrame(self.gdf, geometry=geometry, crs=crs)
 
-        self.x_column, self.y_column = x_column, y_column
+        self.x_column, self.y_column, self.z_column = x_column, y_column, z_column
         self.crs_key = crs_key
 
     def convert_dms_to_decimal(self, x_column: str, y_column: str):
@@ -389,30 +384,34 @@ class DataHandler:
         """
         target_crs = pyproj.CRS.from_authority(CRS_DICT[target_crs_key]["auth_name"], CRS_DICT[target_crs_key]["code"])
         self.gdf = self.gdf.to_crs(crs=target_crs)
+        self.crs_key = target_crs_key
 
-    def save_to_geospatial_file(self, path: str, layer_name: str = "pontos"):
+    def export_geodataframe(self, path: str, layer_name: str = "pontos"):
         """
-        Exporta o GeoDataFrame aramazenado no atributo "gdf" da classe para um arquivo Shapefile, GeoJson ou Geopackage.
+        Exporta o GeoDataFrame aramazenado no atributo "gdf" da classe para um arquivo vetorial ou tabela.
         :param path: Caminho do arquivo de saída.
         :param layer_name: Nome da camada (para arquivos geopackage).
         :return: Nada
         """
-        unsupported_dtypes = ("category", "timedelta64[ns]")
+        if path.endswith(".shp"):
+            unsupported_dtypes = ("category", "timedelta64[ns]", "datetime64[ns]", "<M8[ns]", ">M8[ns]")
+        else:
+            unsupported_dtypes = ("category", "timedelta64[ns]")
 
-        for column in self.gdf.columns:
-            if self.gdf[column].dtype in unsupported_dtypes:
-                self.gdf[column] = self.gdf[column].astype(str)
+        for c in self.gdf.columns:
+            if self.gdf[c].dtype in unsupported_dtypes:
+                self.gdf[c] = self.gdf[c].astype(str)
 
         if path.endswith(".gpkg"):
-            self.gdf.to_file(filename=path, layer=layer_name, driver="GPKG")
+            self.gdf.to_file(filename=path, layer=layer_name, driver="GPKG", encoding="utf-8")
         elif path.endswith(".csv"):
             df = pandas.DataFrame(self.gdf)
-            df.to_csv(path, sep=";", decimal=".", index_label="Index")
+            df.to_csv(path, sep=";", decimal=".", index=False, encoding="utf-8")
         elif path.endswith(".xlsx"):
             df = pandas.DataFrame(self.gdf)
-            df.to_excel(path, index_label="Index")
-        else:
-            self.gdf.to_file(filename=path)
+            df.to_excel(path, index=False)
+        else:  # GeoJSON e Shapefile
+            self.gdf.to_file(filename=path, encoding="utf-8")
 
 
 def get_dtype_key(value: str) -> str | None:
@@ -427,36 +426,3 @@ def get_dtype_key(value: str) -> str | None:
             return dt_key
     return None
 
-
-# TESTES ||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*--||--*-
-"""
-if __name__ == "__main__":
-    ic.configureOutput(prefix="LOG| ", includeContext=False)
-
-    # PARÂMETROS DE TESTE
-    input_file, sheet = "exemplo_dados_entrada.xlsx", 0
-    crs, x, y = "SIRGAS 2000 (EPSG:4674)", "longitude", "latitude"
-    merge_column = "codigo"
-    column_to_change, target_dtype = "altitude", "Integer"
-    target_crs = "SIRGAS 2000 / UTM zone 22S (EPSG:31982)"
-    output_file = "teste.geojson"
-
-    handler = DataHandler()
-
-    # LÊ A PRIMEIRA PLANILHA SELECIONADA E DEFINE A GEOMETRIA
-    ic(handler.read_excel_file(input_file))
-    ic(handler.read_excel_sheet(sheet))
-    ic(handler.set_geodataframe_geometry(crs, x, y))
-    ic(handler.gdf.dtypes)
-    # MESCLA AS PLANILHAS DO ARQUIVO
-    ic(handler.merge_sheets(merge_column))
-    ic(handler.gdf.dtypes)
-    # ALTERA O TIPO DE DADO DE UMA COLUNA
-    ic(handler.change_column_dtype(column_to_change, target_dtype))
-    ic(handler.gdf[column_to_change].dtype)
-    # REPROJETA PARA OUTRO SRC
-    ic(handler.reproject_geodataframe(target_crs))
-    ic(handler.gdf.crs)
-    # EXPORTA UM ARQUIVO VETORIAL
-    ic(handler.save_to_geospatial_file(output_file))
-"""
