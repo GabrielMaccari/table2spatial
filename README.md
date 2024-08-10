@@ -78,14 +78,16 @@ No exemplo abaixo, a coluna **Cod_ponto** é usada para interligar as linhas das
 | EX004     | -27,19588 | -48,76274 | 25/05/2022 |     Não     |    0     |                  |                   |
 
 ### 3. Reprojetando os Pontos para Outro SRC
-É possível reprojetar uma tabela de pontos usando o table2spatial. Para isso, depois de ter importado sua tabela, clique no botão <img src="https://github.com/FrostPredator/table2spatial/assets/114439033/1ad5a27e-d09b-4909-8e93-7083ea55cdf4" width="20px">, na barra de ferramentas do programa. Uma janela aparecerá, mostrando o SRC atual do arquivo e uma caixa de seleção para escolha do novo SRC. Você pode digitar os primeiros caracteres do nome de um SRC nessa caixa para encontrá-lo mais facilmente. Clique em OK após selecionar o SRC para reprojetar.
+É possível reprojetar uma tabela de pontos usando o table2spatial. Para isso, depois de ter importado sua tabela, clique no botão <img src="https://github.com/FrostPredator/table2spatial/assets/114439033/1ad5a27e-d09b-4909-8e93-7083ea55cdf4" width="20">, na barra de ferramentas do programa. Uma nova aba aparecerá, mostrando o SRC atual do arquivo e uma caixa de seleção para escolha do novo SRC. Você pode digitar os primeiros caracteres do nome de um SRC nessa caixa para encontrá-lo mais facilmente. Clique em OK após selecionar o SRC para reprojetar.
 
-<img src="https://github.com/FrostPredator/table2spatial/assets/114439033/6f10bf7e-33fa-481e-8fca-d421cd3ffb59" width="500px">
+Você também pode marcar a caixa "Salvar coordenadas como colunas na tabela" para que o programa salve as coordenadas reprojetadas em colunas na tabela. Depois de marcar a caixa, insira nos campos X, Y (e Z, no caso de SRCs 3D) os nomes desejados para cada coluna.
 
-**Obs:** A reprojeção afeta apenas a geometria interna do arquivo vetorial a ser exportado (que aparece com o nome "geometry" na lista de colunas) e não modifica os dados contidos nas colunas de coordenadas que foram selecionadas ao importar a tabela no table2spatial.
+<img src="https://github.com/user-attachments/assets/ea124221-3328-4048-a734-71febcc32332" width="300">
+
+**Obs:** Caso você insira um nome de coluna que já existe na tabela, os dados da coluna em questão serão substituídos pelas novas coordenadas.
 
 ### 4. Exportando um Arquivo Vetorial
-Você pode exportar a tabela como um arquivo vetorial de pontos, em formato GeoPackage, GeoJSON ou Shapefile. Para isso, clique no botão <img src="https://github.com/user-attachments/assets/ceb20ff4-f859-4f3f-8c2a-2ac02db60779" width="20px">, na barra de ferramentas. Uma caixa de diálogo aparecerá para escolher o formato de saída e salvar o arquivo. Caso o formato de saída seja GeoPackage, uma outra janela aparecerá em seguida para definir o nome da camada.
+Você pode exportar a tabela como um arquivo vetorial de pontos, em formato GeoPackage, GeoJSON ou Shapefile. Para isso, clique no botão <img src="https://github.com/user-attachments/assets/ceb20ff4-f859-4f3f-8c2a-2ac02db60779" width="20">, na barra de ferramentas. Uma caixa de diálogo aparecerá para escolher o formato de saída e salvar o arquivo. Caso o formato de saída seja GeoPackage, uma outra janela aparecerá em seguida para definir o nome da camada.
 
 **Observações:**
 - Você pode salvar múltiplas camadas dentro de um mesmo arquivo GeoPackage. Basta selecionar o mesmo arquivo ao exportar e então especificar um nome diferente para a nova camada a ser inserida. **Caso você defina um nome de camada que já existe dentro do arquivo, ela será substituída**.
@@ -93,8 +95,47 @@ Você pode exportar a tabela como um arquivo vetorial de pontos, em formato GeoP
 - Ao exportar como Shapefile, todos os nomes de colunas/atributos serão cortados para um limite de 10 caracteres que é estabelecido pelo formato Shapefile.
 - O formato Shapefile não suporta campos de data e hora (Datetime). Logo, ocorrerá um erro ao tentar exportar para Shapefile uma tabela de pontos com uma coluna Datetime. Para resolver, exporte para outro formato ou converta a coluna de data e hora para String.
 
-### 5. Criando Estereogramas e Diagramas de Roseta
-Em breve...
+### 5. Criando Estereogramas e Diagramas de Roseta simples
+
+#### 5.1. Estereogramas
+
+Clique no botão <img src="https://github.com/user-attachments/assets/90457e8d-f5a0-413b-a097-657e4a1bcd30" width="20"> na barra de ferramentas e selecione a opção "Estereograma". Uma janela de configurações aparecerá. Na caixa de seleção de Tipo de medida, escolha o tipo de estrutura a ser representada (planos, linhas ou linhas contidas em planos) e os tipos de ângulo a serem usados.
+
+> **Dip direction:** Sentido de mergulho do plano (0 - 360°). Representa o azimute para onde o plano está mergulhando. Está sempre a 90° do *strike*.
+> 
+> **Strike:** Direção do plano (0-360°). Corresponde ao azimute da linha de intersecção entre o plano e a superfície horizontal. **Para que o *strike* seja usado no table2spatial, é necessário que seja utilizada a regra da mão direita** para definir qual o ângulo a ser utilizado (o *strike* deve ser sempre igual ao *dip direction* - 90°).
+> 
+> **Dip:** Ângulo de mergulho vertical do plano (0 - 90°).
+> 
+> **Plunge:** Ângulo de mergulho vertical da linha (0 - 90°).
+> 
+> **Bearing:** Sentido de mergulho da linha (0 - 360°). Representa o azimute para onde a linha está mergulhando. Também conhecido como *trend*.
+> 
+> **Rake:** Ângulo entre a linha e o *strike* do plano onde ela está contida, medido no plano (-180 - 180°). Também conhecido como *pitch*.
+
+Depois de escolher o tipo de medida, selecione as colunas da tabela que contêm cada uma das medidas em questão.
+
+<img src="https://github.com/user-attachments/assets/58d83439-4a36-403e-8898-46f2b25c6bcb" width="250">
+
+Marque a caixa "Plotar planos como pólos" caso queira representar os planos apenas com seus polos. Do contrário, planos são representados por padrão com grandes círculos.
+
+Clique em OK para criar o estereograma, que aparecerá em uma nova janela.
+
+<img src="https://github.com/user-attachments/assets/d1ea14bc-7690-4fb7-a145-5776b322bedd" width="250">
+
+Caso queira salvar o estereograma gerado, clique no botão <img src="https://github.com/user-attachments/assets/e7637387-19a1-4e2e-898d-01d1b8a41e01" width="20">.
+
+#### 5.2. Diagramas de Roseta
+
+Clique no botão <img src="https://github.com/user-attachments/assets/90457e8d-f5a0-413b-a097-657e4a1bcd30" width="20"> na barra de ferramentas e selecione a opção "Diagrama de roseta". Uma janela de configurações aparecerá. Selecione a coluna que contém os azimutes a serem representados (0 - 360°) e o número de direções do diagrama. 
+
+Ao selecionar 16 direções, por exemplo, os azimutes serão particionados em 16 conjuntos de 22,5° (360 / 16), que correspondem às direções cardeais, colaterais e subcolaterais. O primeiro conjunto incluirá azimutes entre 348,75° (norte - 22,5 / 2) e 11,25° (norte + 22,5 / 2), e assim por diante.
+
+**Obs:** Usando o table2spatial, só é possível gerar diagramas de roseta de uma única variável.
+
+Clique em OK para gerar o diagrama, que aparecerá em um nova janela.
+
+Caso queira salvar o estereograma gerado, clique no botão <img src="https://github.com/user-attachments/assets/e7637387-19a1-4e2e-898d-01d1b8a41e01" width="20">.
 
 ## Atribuições
 Icons by [icons8](https://icons8.com/)
