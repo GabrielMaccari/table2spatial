@@ -168,7 +168,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.reproject_stack_layout.addWidget(self.z_column_name_icn, row, 19, 1, 1)
         row += 1
         self.reproject_stack_layout.addWidget(self.reproject_ok_btn, row, 0, 1, 2)
-        self.reproject_stack_layout.addWidget(self.reproject_cancel_btn, row, 2, 1, 2)
+        self.reproject_stack_layout.addWidget(self.reproject_cancel_btn, row, 2, 1, 4)
 
         self.reproject_stack_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
 

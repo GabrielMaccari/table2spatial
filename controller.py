@@ -177,6 +177,7 @@ class UIController:
             self.model.read_excel_sheet(sheet)
             self.fill_xy_combos()
             self.check_if_selected_xyz_is_valid()
+            toggle_wait_cursor(False)
         except Exception as error:
             self.handle_exception(error, "sheet_selected()")
 
@@ -440,7 +441,7 @@ class UIController:
             self.view.switch_stack()
 
             crs_label = f"{self.model.gdf.crs.name} ({self.model.gdf.crs.type_name})"
-            label = f"Pontos: {len(self.model.gdf.index)}    SRC: {crs_label})"
+            label = f"Pontos: {len(self.model.gdf.index)}    SRC: {crs_label}"
             self.view.bottom_label.setText(label if len(label) < 87 else f"Pontos: {len(self.model.gdf.index)}")
 
             toggle_wait_cursor(False)
