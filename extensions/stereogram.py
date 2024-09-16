@@ -21,7 +21,7 @@ COLORMAPS = ('Greys', 'Purples', 'Blues', 'Greens', 'Oranges', 'Reds', 'YlOrBr',
 MEASUREMENT_TYPES = {
     'Planos (dip direction/dip)': ('Dip direction', 'Dip'),
     'Planos (strike/dip)': ('Strike', 'Dip'),
-    'Linhas (plunge/bearing)': ('Bearing', 'Plunge'),
+    'Linhas (plunge/trend)': ('Trend', 'Plunge'),
     'Linhas em planos (strike/dip/rake)': ('Strike', 'Dip', 'Rake')
 }
 
@@ -106,7 +106,7 @@ class StereogramWindow(QtWidgets.QMainWindow):
             ranges = {
                 "azimuth": (0, 360),
                 "dip": (0, 90),
-                "rake": (-180, 180)
+                "rake": (0, 180)
             }
             min_angle, max_angle = ranges[angle_type][0], ranges[angle_type][1]
             valid_columns = []
@@ -156,7 +156,7 @@ class StereogramWindow(QtWidgets.QMainWindow):
             else:
                 plot_type = "lines"
 
-            az_type = MEASUREMENT_TYPES[msr_type][0].lower() if MEASUREMENT_TYPES[msr_type][0] != "Bearing" else "strike"
+            az_type = MEASUREMENT_TYPES[msr_type][0].lower() if MEASUREMENT_TYPES[msr_type][0] != "Trend" else "strike"
 
             plot_stereogram(azimuths, dips, rakes, plot_type, az_type)
 
@@ -187,7 +187,7 @@ class StereogramWindow(QtWidgets.QMainWindow):
 
 def plot_stereogram(azimuths: numpy.array, dips: numpy.array, rakes: numpy.array = None, plot_type: str = "poles", plane_azimuth_type: str = "strike") -> None:
     """
-    :param azimuths: Array contendo os azimutes (strikes, dip directions ou bearings)
+    :param azimuths: Array contendo os azimutes (strikes, dip directions ou trends)
     :param dips: Array contendo os ângulos de mergulho (dips ou plunges)
     :param rakes: Array contendo os rakes/pitches
     :param plot_type: O tipo de plotagem ("planes", "poles", "lines" ou "rakes")

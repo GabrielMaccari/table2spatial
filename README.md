@@ -109,9 +109,9 @@ Clique no botão <img src="https://github.com/user-attachments/assets/90457e8d-f
 > 
 > **Plunge:** Ângulo de mergulho vertical da linha (0 - 90°).
 > 
-> **Bearing:** Sentido de mergulho da linha (0 - 360°). Representa o azimute para onde a linha está mergulhando. Também conhecido como *trend*.
+> **Trend:** Sentido de mergulho da linha (0 - 360°). Representa o azimute para onde a linha está mergulhando.
 > 
-> **Rake:** Ângulo entre a linha e o *strike* do plano onde ela está contida, medido no plano (-180 - 180°). Também conhecido como *pitch*.
+> **Rake:** Ângulo entre a linha e o *strike* (considerando-se a regra da mão direita) do plano onde ela está contida, medido no plano (0 - 180°).
 
 Depois de escolher o tipo de medida, selecione as colunas da tabela que contêm cada uma das medidas em questão.
 
