@@ -28,7 +28,7 @@ def select_figure_save_location(parent: QtWidgets.QMainWindow) -> (str, str):
     """
     file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
         parent, caption="Salvar gráfico",
-        filter="Formatos suportados (*.png *.jpg *.svg)"
+        filter="Formatos suportados (*.png *.jpg *.svg);;"
                "PNG (*.png);;"
                "JPG (*.jpg);;"
                "SVG (*.svg)"
