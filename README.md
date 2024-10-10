@@ -105,13 +105,13 @@ Clique no botão <img src="https://github.com/user-attachments/assets/90457e8d-f
 > 
 > **Strike:** Direção do plano (0-360°). Corresponde ao azimute da linha de intersecção entre o plano e a superfície horizontal. **Para que o *strike* seja usado no table2spatial, é necessário que seja utilizada a regra da mão direita** para definir qual o ângulo a ser utilizado (o *strike* deve ser sempre igual ao *dip direction* - 90°).
 > 
-> **Dip:** Ângulo de mergulho vertical do plano (0 - 90°).
+> **Dip:** Ângulo de mergulho do plano (0 - 90°).
 > 
-> **Plunge:** Ângulo de mergulho vertical da linha (0 - 90°).
+> **Plunge:** Caimento (ângulo de mergulho) da linha (0 - 90°).
 > 
-> **Trend:** Sentido de mergulho da linha (0 - 360°). Representa o azimute para onde a linha está mergulhando.
+> **Trend:** Sentido de caimento da linha (0 - 360°). Representa o azimute para onde a linha está mergulhando.
 > 
-> **Rake:** Ângulo entre a linha e o *strike* (considerando-se a regra da mão direita) do plano onde ela está contida, medido no plano (0 - 180°).
+> **Rake:** Obliquidade da linha no plano. É o ângulo entre a linha e o *strike* (considerando-se a regra da mão direita) do plano onde ela está contida, medido sobre o plano (0 - 180°).
 
 Depois de escolher o tipo de medida, selecione as colunas da tabela que contêm cada uma das medidas em questão.
 
