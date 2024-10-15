@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+""" @author: Gabriel Maccari """
+
 import os
 from PyQt6 import QtWidgets, QtGui, QtCore
 from icecream import ic

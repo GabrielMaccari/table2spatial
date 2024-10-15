@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-@author: Gabriel Maccari
-"""
+""" @author: Gabriel Maccari """
 
 from PyQt6 import QtWidgets, QtGui, QtCore
 from platform import platform

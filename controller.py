@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-@author: Gabriel Maccari
-"""
+""" @author: Gabriel Maccari """
 
 import os
 import pandas
@@ -25,24 +23,26 @@ class UIController:
 
         self.view.show()
 
+        # Conecta os botões da interface às funções do controlador
         self.view.import_button.clicked.connect(self.import_button_clicked)
         self.view.merge_button.clicked.connect(self.merge_button_clicked)
         self.view.reproject_button.clicked.connect(self.reproject_button_clicked)
         self.view.export_button.clicked.connect(self.export_button_clicked)
         self.view.graph_button.clicked.connect(self.graph_button_clicked)
 
+        # Conecta o botão de OK da tela de importação à função do controlador
         self.view.import_ok_btn.clicked.connect(self.import_ok_button_clicked)
 
-        # self.view.target_crs_cbx.currentTextChanged.connect(self.save_coords_checkbox_checked)
+        # Conecta os componentes da tela de reprojeção às funções do controlador
         self.view.save_coords_chk.checkStateChanged.connect(self.save_coords_checkbox_checked)
         self.view.x_column_name_edt.textChanged.connect(self.check_if_coords_columns_exist)
         self.view.y_column_name_edt.textChanged.connect(self.check_if_coords_columns_exist)
         self.view.z_column_name_edt.textChanged.connect(self.check_if_coords_columns_exist)
         self.view.reproject_ok_btn.clicked.connect(self.reproject_ok_button_clicked)
 
-    # AÇÕES DA JANELA PRINCIPAL
-    def import_button_clicked(self):
+    def import_button_clicked(self) -> None:
         try:
+            # Mostra um diálogo para seleção de um arquivo
             path = show_file_dialog(
                 caption="Selecione uma tabela contendo os dados de entrada.",
                 extension_filter=("Formatos suportados (*.xlsx *.xlsm *.csv *.ods);;"
@@ -53,22 +53,26 @@ class UIController:
                 mode="open", parent=self.view
             )
 
-            if path == "":
+            # Se nenhum arquivo foi selecionado, retorna
+            if not path:
                 return
 
             toggle_wait_cursor(True)
 
-            sheets = None
-
-            if path.endswith(".csv"):
+            # Lê o arquivo. Caso não seja um CSV, guarda também os nomes das planilhas (abas) do arquivo
+            is_csv = path.endswith(".csv")
+            if is_csv:
                 self.model.read_csv_file(path)
                 self.model.excel_file = None
+                sheets = None
             else:
                 self.model.read_excel_file(path)
                 sheets = self.model.excel_file.sheet_names
 
-            self.setup_import_screen(csv=True if path.endswith(".csv") else False, sheets=sheets)
+            # Troca para a tela de importação
+            self.setup_import_screen(csv=is_csv, sheets=sheets)
             self.view.switch_stack(1)
+
             toggle_wait_cursor(False)
 
         except Exception as error:
@@ -77,35 +81,44 @@ class UIController:
             if isinstance(error, IndexError):
                 self.connect_import_screen_components(True)
 
-    def setup_import_screen(self, csv: bool = False, sheets: list | None = None):
+    def setup_import_screen(self, csv: bool = False, sheets: list | None = None) -> None:
         # Desconecta os componentes para poder atualizar sem dar trigger nas funções
         try:
             self.connect_import_screen_components(False)
         except TypeError:
             pass
 
+        # Esvazia a combo box de planilhas (abas) do arquivo
         self.view.sheet_cbx.clear()
+
+        # Habilita/desabilita a combobox de planilhas/abas dependendo se for ou não um CSV
         self.view.sheet_cbx.setEnabled(not csv)
 
-        # Caso seja um tipo de arquivo que suporta múltiplas planilhas/abas (xlsx, xlsm, ods) (i.e. não é um csv)
+        # Caso seja um tipo de arquivo que suporta múltiplas planilhas/abas (xlsx, xlsm, ods), adiciona os nomes das
+        # planilhas como opções na combobox
         if not csv:
             self.view.sheet_cbx.addItems(sheets)
             self.model.read_excel_sheet(0)
 
-        self.view.crs_cbx.clear()
-        self.view.crs_cbx.addItems(sorted(CRS_DICT.keys()))
+        # Preenche a combobox de SRCs, caso já não esteja preenchida
+        if self.view.crs_cbx.count() == 0:
+            self.view.crs_cbx.addItems(sorted(CRS_DICT.keys()))
         self.view.crs_cbx.setCurrentText("SIRGAS 2000 (EPSG:4674)")
 
+        # Desmarca por padrão o formato GMS
         self.view.dms_chk.setChecked(False)
 
-        self.fill_xy_combos()
+        # Preenche as comboboxes dos campos de coordenadas
+        self.fill_xyz_combos()
 
+        # Desativa os componentes de coordenadas Z, pois o SRC pré-selecionado por padrão é 2D: SIRGAS 2000 (EPSG:4674)
         self.view.z_cbx.setEnabled(False)
         self.view.z_ok_icon.setEnabled(False)
 
-        # Reconecta os componentes
+        # Reconecta os componentes depois de configurar a interface
         self.connect_import_screen_components(True)
 
+        # Checa se os campos de coordenadas pré-selecionados são válidos
         self.check_if_selected_xyz_is_valid()
 
     def connect_import_screen_components(self, connect: bool):
@@ -124,28 +137,23 @@ class UIController:
             self.view.y_cbx.disconnect()
             self.view.z_cbx.disconnect()
 
-    def fill_xy_combos(self):
-        self.view.x_cbx.clear()
-        self.view.y_cbx.clear()
-        self.view.z_cbx.clear()
-
-        self.view.x_cbx.addItems(self.model.gdf.columns)
-        self.view.y_cbx.addItems(self.model.gdf.columns)
-        self.view.z_cbx.addItems(self.model.gdf.columns)
-
+    def fill_xyz_combos(self):
+        for combo in (self.view.x_cbx, self.view.y_cbx, self.view.z_cbx):
+            combo.clear()
+            combo.addItems(self.model.gdf.columns)
         self.auto_select_xy_columns()
 
     def auto_select_xy_columns(self):
         crs_key = self.view.crs_cbx.currentText()
         crs_type = CRS_DICT[crs_key]["type"]
-        x = self.model.search_coordinates_column_by_name("x", crs_type, self.model.gdf.columns)
-        self.view.x_cbx.setCurrentText(x)
-        y = self.model.search_coordinates_column_by_name("y", crs_type, self.model.gdf.columns)
-        self.view.y_cbx.setCurrentText(y)
 
+        coordinate_axes = ["x", "y"]
         if crs_type == "Geographic 3D CRS":
-            z = self.model.search_coordinates_column_by_name("z", crs_type, self.model.gdf.columns)
-            self.view.z_cbx.setCurrentText(z)
+            coordinate_axes.append("z")
+
+        for axis in coordinate_axes:
+            column = self.model.search_coordinates_column_by_name(axis, crs_type, self.model.gdf.columns)
+            getattr(self.view, f"{axis}_cbx").setCurrentText(column)
 
     def check_if_selected_xyz_is_valid(self):
         crs_key = self.view.crs_cbx.currentText()
@@ -153,29 +161,31 @@ class UIController:
         dms_format = self.view.dms_chk.isChecked()
         valid_x_cols, valid_y_cols, valid_z_cols = self.model.filter_coordinates_columns(crs_key, dms_format)
 
-        selected_x = self.view.x_cbx.currentText()
-        selected_y = self.view.y_cbx.currentText()
-        selected_z = self.view.z_cbx.currentText()
+        # eixo: coluna selecionada, colunas válidas
+        selected_columns = {
+            "x": (self.view.x_cbx.currentText(), valid_x_cols),
+            "y": (self.view.y_cbx.currentText(), valid_y_cols),
+            "z": (self.view.z_cbx.currentText(), valid_z_cols)
+        }
 
-        x_ok = True if selected_x in valid_x_cols else False
-        y_ok = True if selected_y in valid_y_cols else False
-        z_ok = True if selected_z in valid_z_cols else False
-
-        self.view.x_ok_icon.setIcon(QtGui.QIcon("icons/ok.png" if x_ok else "icons/not_ok.png"))
-        self.view.y_ok_icon.setIcon(QtGui.QIcon("icons/ok.png" if y_ok else "icons/not_ok.png"))
-        self.view.z_ok_icon.setIcon(QtGui.QIcon("icons/ok.png" if z_ok else "icons/not_ok.png"))
+        result = {}
+        for axis, (selected_column, valid_columns) in selected_columns.items():
+            # Checa se a coluna selecionada está na lista de colunas válidas para o eixo em questão (x,y ou z)
+            result[axis] = selected_column in valid_columns
+            # Configura o ícone do botão de validação do eixo de acordo com o resultado
+            getattr(self.view, f"{axis}_ok_icon").setIcon(QtGui.QIcon("icons/ok.png" if result[axis] else "icons/not_ok.png"))
 
         if crs_type == "Geographic 3D CRS":
-            self.view.import_ok_btn.setEnabled(True if x_ok and y_ok and z_ok else False)
+            self.view.import_ok_btn.setEnabled(all([result["x"], result["y"], result["z"]]))
         else:
-            self.view.import_ok_btn.setEnabled(True if x_ok and y_ok else False)
+            self.view.import_ok_btn.setEnabled(result["x"] and result["y"])
 
     def sheet_selected(self):
         try:
             toggle_wait_cursor(True)
             sheet = self.view.sheet_cbx.currentText()
             self.model.read_excel_sheet(sheet)
-            self.fill_xy_combos()
+            self.fill_xyz_combos()
             self.check_if_selected_xyz_is_valid()
             toggle_wait_cursor(False)
         except Exception as error:

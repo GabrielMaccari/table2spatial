@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-@author: Gabriel Maccari
-"""
+""" @author: Gabriel Maccari """
 
 import matplotlib
 import os
@@ -117,7 +115,7 @@ class RoseChartWindow(QtWidgets.QMainWindow):
             file_path, file_extension = select_figure_save_location(self)
             if not file_path:
                 return
-            plt.savefig(file_path, dpi=300, format=file_extension, transparent=True)
+            plt.savefig(file_path, dpi=600, format=file_extension, transparent=True)
         except Exception as error:
             handle_exception(error, "rose_chart - save_button_clicked()", "Ops! Ocorreu um erro!", self)
 
@@ -156,12 +154,15 @@ def plot_rose_chart(azimuths, mirror=False, number_of_sectors=8):
     # Fiz os rótulos dessa forma pra figura ficar igual à do estereograma
     labels = ['N', 'E', 'S', 'W']
     lbl_angles = numpy.arange(0, 360, 360 / len(labels))
-    label_x = 0.5 - 0.55 * numpy.cos(numpy.radians(lbl_angles + 90))
-    label_y = 0.5 + 0.55 * numpy.sin(numpy.radians(lbl_angles + 90))
+    label_x = 0.5 - 0.54 * numpy.cos(numpy.radians(lbl_angles + 90))
+    label_y = 0.5 + 0.54 * numpy.sin(numpy.radians(lbl_angles + 90))
     for i in range(len(labels)):
         ax.text(label_x[i], label_y[i], labels[i], transform=ax.transAxes, ha='center', va='center')
+
+    n = len(azimuths[~numpy.isnan(azimuths)])
+    ax.text(-0.05, -0.057, f"n = {n}", transform=ax.transAxes, fontsize=8.5, verticalalignment='bottom', horizontalalignment='left')
 
     plots_folder = os.getcwd() + "/plots"
     if not os.path.exists(plots_folder):
         os.makedirs(plots_folder)
-    plt.savefig(f"{plots_folder}/rose_chart.png", dpi=300, format="png", transparent=True)
+    plt.savefig(f"{plots_folder}/rose_chart.png", dpi=600, format="png", transparent=True)

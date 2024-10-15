@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-@author: Gabriel Maccari
-"""
+""" @author: Gabriel Maccari """
 
 import sys
 from PyQt6.QtWidgets import QApplication

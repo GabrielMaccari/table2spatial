@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-@author: Gabriel Maccari
-"""
+""" @author: Gabriel Maccari """
 
 import matplotlib
 import numpy
@@ -10,6 +8,8 @@ import mplstereonet
 import os
 import matplotlib.pyplot as plt
 from PyQt6 import QtCore, QtGui, QtWidgets
+from matplotlib.lines import Line2D
+from icecream import ic
 
 from extensions.shared_functions import handle_exception, toggle_wait_cursor, select_figure_save_location
 
@@ -25,6 +25,13 @@ MEASUREMENT_TYPES = {
     'Linhas em planos (strike/dip/rake)': ('Strike', 'Dip', 'Rake')
 }
 
+MARKERS = {
+    'Círculo': 'o',
+    'Triângulo': '^',
+    'Quadrado': 's',
+    'Losango': 'D'
+}
+
 PLOT_WIDTH = 350
 
 
@@ -33,6 +40,10 @@ class StereogramWindow(QtWidgets.QMainWindow):
         super(StereogramWindow, self).__init__(parent)
         self.parent = parent
         self.df = df.drop(columns="geometry")
+        self.fig = None
+        self.ax = None
+        self.legend = {"markers": [], "labels": []}
+        self.figure_loop = 1
 
         self.setWindowTitle('Estereograma')
         self.setWindowIcon(QtGui.QIcon('icons/graph.png'))
@@ -51,10 +62,16 @@ class StereogramWindow(QtWidgets.QMainWindow):
         msr_type = "Planos (dip direction/dip)"
         lb1, lb2, lb3 = MEASUREMENT_TYPES[msr_type][0]+"s:", MEASUREMENT_TYPES[msr_type][1]+"s:", "Rakes:"
 
+        self.title_lbl = QtWidgets.QLabel("Título do gráfico:", self.config_page)
+        self.title_edt = QtWidgets.QLineEdit(self.config_page)
+        self.title_edt.setToolTip("Insira um título para o gráfico ou\ndeixe em branco para omiti-lo.")
         self.measurement_type_lbl = QtWidgets.QLabel("Tipo de medida:", self.config_page)
         self.measurement_type_cbx = QtWidgets.QComboBox(self.config_page)
         self.measurement_type_cbx.addItems(MEASUREMENT_TYPES)
         self.measurement_type_cbx.setMinimumWidth(300)
+
+        sublayout1 = QtWidgets.QGridLayout()
+
         self.azimuths_column_lbl = QtWidgets.QLabel(lb1, self.config_page)
         self.azimuths_column_cbx = QtWidgets.QComboBox(self.config_page)
         self.azimuths_column_cbx.addItems(self.filter_angle_columns("azimuth"))
@@ -65,22 +82,58 @@ class StereogramWindow(QtWidgets.QMainWindow):
         self.rakes_column_lbl.setEnabled(False)
         self.rakes_column_cbx = QtWidgets.QComboBox(self.config_page)
         self.rakes_column_cbx.setEnabled(False)
-        self.plot_poles_chk = QtWidgets.QCheckBox("Plotar planos como pólos")
+
+        sublayout1.addWidget(self.azimuths_column_lbl, 0, 0, 1, 1)
+        sublayout1.addWidget(self.azimuths_column_cbx, 0, 1, 1, 1)
+        sublayout1.addWidget(self.dips_column_lbl, 1, 0, 1, 1)
+        sublayout1.addWidget(self.dips_column_cbx, 1, 1, 1, 1)
+        sublayout1.addWidget(self.rakes_column_lbl, 2, 0, 1, 1)
+        sublayout1.addWidget(self.rakes_column_cbx, 2, 1, 1, 1)
+
+        self.plot_poles_chk = QtWidgets.QCheckBox("Plotar planos como polos", self.config_page)
+        self.density_contour_chk = QtWidgets.QCheckBox("Plotar contornos de densidade", self.config_page)
+        self.show_legend_chk = QtWidgets.QCheckBox("Mostrar legenda", self.config_page)
+
+        sublayout2 = QtWidgets.QGridLayout()
+
+        self.label_lbl = QtWidgets.QLabel("Rótulo das medidas:", self.config_page)
+        self.label_lbl.setEnabled(False)
+        self.label_edt = QtWidgets.QLineEdit("Planos", self.config_page)
+        self.label_edt.setToolTip("Insira um rótulo para a\nmedida (Ex: Xistosidade).")
+        self.label_edt.setEnabled(False)
+        self.color_lbl = QtWidgets.QLabel("Cor da simbologia:", self.config_page)
+        self.color_btn = QtWidgets.QPushButton("#000000", self.config_page)
+        self.color_btn.setToolTip("Clique para definir a cor das linhas\ne/ou marcadores da medida no gráfico.")
+        self.marker_lbl = QtWidgets.QLabel("Marcador de linhas/polos:", self.config_page)
+        self.marker_cbx = QtWidgets.QComboBox(self.config_page)
+        self.marker_cbx.addItems(MARKERS.keys())
+
+        sublayout2.addWidget(self.label_lbl, 0, 0, 1, 1)
+        sublayout2.addWidget(self.label_edt, 0, 1, 1, 2)
+        sublayout2.addWidget(self.color_lbl, 1, 0, 1, 1)
+        sublayout2.addWidget(self.color_btn, 1, 1, 1, 2)
+        sublayout2.addWidget(self.marker_lbl, 2, 0, 1, 1)
+        sublayout2.addWidget(self.marker_cbx, 2, 1, 1, 2)
+
         self.ok_btn = QtWidgets.QPushButton("OK")
 
+        self.config_layout.addWidget(self.title_lbl)
+        self.config_layout.addWidget(self.title_edt)
         self.config_layout.addWidget(self.measurement_type_lbl)
         self.config_layout.addWidget(self.measurement_type_cbx)
-        self.config_layout.addWidget(self.azimuths_column_lbl)
-        self.config_layout.addWidget(self.azimuths_column_cbx)
-        self.config_layout.addWidget(self.dips_column_lbl)
-        self.config_layout.addWidget(self.dips_column_cbx)
-        self.config_layout.addWidget(self.rakes_column_lbl)
-        self.config_layout.addWidget(self.rakes_column_cbx)
+        self.config_layout.addLayout(sublayout1)
         self.config_layout.addWidget(self.plot_poles_chk)
+        self.config_layout.addWidget(self.density_contour_chk)
+        self.config_layout.addWidget(self.show_legend_chk)
+        self.config_layout.addLayout(sublayout2)
         self.config_layout.addWidget(self.ok_btn)
 
         self.measurement_type_cbx.currentTextChanged.connect(self.measurement_type_selected)
+        self.show_legend_chk.checkStateChanged.connect(self.show_legend_checkbox_checked)
+        self.color_btn.clicked.connect(self.color_button_clicked)
         self.ok_btn.clicked.connect(self.ok_button_clicked)
+
+        self.initial_size = self.layout().sizeHint()
 
         # PLOT PAGE
         self.plot_layout = QtWidgets.QGridLayout()
@@ -93,13 +146,21 @@ class StereogramWindow(QtWidgets.QMainWindow):
         self.save_btn.setIcon(QtGui.QIcon("icons/save.png"))
         self.save_btn.setIconSize(QtCore.QSize(28, 28))
         self.save_btn.setFixedSize(30, 30)
+        self.save_btn.setToolTip("Salvar estereograma")
+        self.add_btn = QtWidgets.QPushButton(self.plot_page)
+        self.add_btn.setIcon(QtGui.QIcon("icons/add.png"))
+        self.add_btn.setIconSize(QtCore.QSize(28, 28))
+        self.add_btn.setFixedSize(30, 30)
+        self.add_btn.setToolTip("Adicionar novas medidas a esse estereograma (máx. 3)")
         self.image_btn = QtWidgets.QPushButton(self.plot_page)
         self.image_btn.setFlat(True)
 
         self.plot_layout.addWidget(self.save_btn, 0, 0, 1, 1)
+        self.plot_layout.addWidget(self.add_btn, 0, 1, 1, 1)
         self.plot_layout.addWidget(self.image_btn, 1, 0, 10, 10)
 
         self.save_btn.clicked.connect(self.save_button_clicked)
+        self.add_btn.clicked.connect(self.add_button_clicked)
 
     def filter_angle_columns(self, angle_type):
         try:
@@ -134,8 +195,24 @@ class StereogramWindow(QtWidgets.QMainWindow):
                 self.rakes_column_cbx.addItems(self.filter_angle_columns("rake"))
             else:
                 self.rakes_column_cbx.clear()
+            if self.label_edt.text() in ("Planos", "Linhas"):
+                self.label_edt.setText("Planos" if msr_type.startswith("Planos") else "Linhas")
         except Exception as error:
             handle_exception(error, "stereogram - measurement_type_selected()", "Ops! Ocorreu um erro!", self)
+
+    def color_button_clicked(self):
+        try:
+            color_object = QtWidgets.QColorDialog.getColor()
+            color = color_object.name()
+            self.color_btn.setStyleSheet(f"color: {color}")
+            self.color_btn.setText(color)
+        except Exception as error:
+            handle_exception(error, "stereogram - color_button_clicked()", "Ops! Ocorreu um erro!", self)
+
+    def show_legend_checkbox_checked(self):
+        show_legend = self.show_legend_chk.isChecked()
+        self.label_lbl.setEnabled(show_legend)
+        self.label_edt.setEnabled(show_legend)
 
     def ok_button_clicked(self):
         try:
@@ -143,25 +220,34 @@ class StereogramWindow(QtWidgets.QMainWindow):
 
             msr_type = self.measurement_type_cbx.currentText()
             plot_poles = self.plot_poles_chk.isChecked()
+            plot_density = self.density_contour_chk.isChecked()
+            show_legend = self.show_legend_chk.isChecked()
+            label = self.label_edt.text()
+            color = self.color_btn.text()
+            marker = MARKERS[self.marker_cbx.currentText()]
+            title = None if self.title_edt.text() == "" else self.title_edt.text()
 
-            azimuths = self.df[self.azimuths_column_cbx.currentText()].to_numpy()
-            dips = self.df[self.dips_column_cbx.currentText()].to_numpy()
+            azimuths = self.df[self.azimuths_column_cbx.currentText()].dropna().to_numpy()
+            dips = self.df[self.dips_column_cbx.currentText()].dropna().to_numpy()
             rakes = None
 
             if msr_type.startswith("Planos"):
                 plot_type = "poles" if plot_poles else "planes"
             elif msr_type.startswith("Linhas em planos"):
                 plot_type = "rakes"
-                rakes = self.df[self.rakes_column_cbx.currentText()].to_numpy()
+                rakes = self.df[self.rakes_column_cbx.currentText()].dropna().to_numpy()
             else:
                 plot_type = "lines"
 
             az_type = MEASUREMENT_TYPES[msr_type][0].lower() if MEASUREMENT_TYPES[msr_type][0] != "Trend" else "strike"
 
-            plot_stereogram(azimuths, dips, rakes, plot_type, az_type)
+            self.plot_stereogram(azimuths, dips, rakes, plot_type, az_type, title, color, marker, plot_density, "Grays", show_legend, label)
 
             self.frame_stack.setCurrentIndex(1)
             self.load_image()
+
+            if len(self.legend["markers"]) >= 3:
+                self.add_btn.setEnabled(False)
 
             toggle_wait_cursor(False)
         except Exception as error:
@@ -173,61 +259,116 @@ class StereogramWindow(QtWidgets.QMainWindow):
         height = int(pixmap.height() * PLOT_WIDTH / pixmap.width())
         self.image_btn.setIconSize(QtCore.QSize(PLOT_WIDTH, height))
         self.image_btn.resize(PLOT_WIDTH, height)
-        # self.setFixedSize(self.geometry().width(), self.geometry().height())
+
+        if self.fig:
+            self.setFixedSize(self.plot_page.sizeHint())
 
     def save_button_clicked(self):
         try:
             file_path, file_extension = select_figure_save_location(self)
             if not file_path:
                 return
-            plt.savefig(file_path, dpi=300, format=file_extension, transparent=True)
+            plt.savefig(file_path, dpi=600, format=file_extension, transparent=True)
         except Exception as error:
             handle_exception(error, "stereogram - save_button_clicked()", "Ops! Ocorreu um erro!", self)
 
+    def add_button_clicked(self):
+        self.frame_stack.setCurrentIndex(0)
+        self.setFixedSize(self.initial_size)
+        self.density_contour_chk.setChecked(False)
+        self.density_contour_chk.setEnabled(False)
+        self.figure_loop += 1
 
-def plot_stereogram(azimuths: numpy.array, dips: numpy.array, rakes: numpy.array = None, plot_type: str = "poles", plane_azimuth_type: str = "strike") -> None:
-    """
-    :param azimuths: Array contendo os azimutes (strikes, dip directions ou trends)
-    :param dips: Array contendo os ângulos de mergulho (dips ou plunges)
-    :param rakes: Array contendo os rakes/pitches
-    :param plot_type: O tipo de plotagem ("planes", "poles", "lines" ou "rakes")
-    :param plane_azimuth_type: O tipo de azimute usado na medida dos planos ("strike" ou "dip direction")
-    :return: Nada.
-    """
+    def plot_stereogram(self, azimuths: numpy.array, dips: numpy.array, rakes: numpy.array = None,
+                        plot_type: str = "poles", plane_azimuth_type: str = "strike", title: str | None = None,
+                        color: str = "black", marker: str = 'o', plot_density: bool = False,
+                        colormap: str = "Grays", show_legend: bool = True, label: str = "") -> None:
+        """
+        :param azimuths: Array contendo os azimutes (strikes, dip directions ou trends)
+        :param dips: Array contendo os ângulos de mergulho (dips ou plunges)
+        :param rakes: Array contendo os rakes/pitches
+        :param plot_type: O tipo de plotagem ("planes", "poles", "lines" ou "rakes")
+        :param plane_azimuth_type: O tipo de azimute usado na medida dos planos ("strike" ou "dip direction")
+        :param title: O título do gráfico.
+        :param color: A cor da simbologia da medida.
+        :param marker: O marcador a ser usado para representar linhas e polos.
+        :param plot_density: Plotar ou não contornos de densidade para as medidas.
+        :param colormap: Rampa de cores para os contornos de densidade.
+        :param show_legend: Mostrar ou não a legenda.
+        :param label: O rótulo das medidas.
+        :return: Nada.
+        """
+        new_figure = self.fig is None
 
-    if rakes is not None and not (len(azimuths) == len(dips) == len(rakes)):
-        raise IndexError(f"A quantidade de azimutes, mergulhos e rakes não é a mesma (azimuths={len(azimuths)}, dips={len(dips)}, rakes={len(rakes)}).")
-    elif rakes is None and not (len(azimuths) == len(dips)):
-        raise IndexError(f"A quantidade de azimutes e mergulhos não é a mesma (azimuths={len(azimuths)}, dips={len(dips)}).")
+        if rakes is not None and not (len(azimuths) == len(dips) == len(rakes)):
+            raise IndexError(f"A quantidade de azimutes, mergulhos e rakes não é a mesma (azimuths={len(azimuths)}, "
+                             f"dips={len(dips)}, rakes={len(rakes)}).")
+        elif rakes is None and not (len(azimuths) == len(dips)):
+            raise IndexError(f"A quantidade de azimutes e mergulhos não é a mesma (azimuths={len(azimuths)}, "
+                             f"dips={len(dips)}).")
 
-    fig, ax = mplstereonet.subplots(figsize=[5, 5], projection="stereonet")
-    ax.set_facecolor('white')
-    ax.set_azimuth_ticks([])
-    ax.grid(color='black', alpha=0.1)
+        # Caso seja um novo gráfico, cria e configura a figura base (gráfico, grid e rótulos)
+        if new_figure:
+            self.fig, self.ax = mplstereonet.subplots(figsize=[5, 5], projection="stereonet")
+            self.ax.set_facecolor('white')
+            self.ax.set_azimuth_ticks([])
+            self.ax.grid(color='black', alpha=0.1)
 
-    if plane_azimuth_type == "dip direction":
-        azimuths -= 90
+            labels = ['N', 'E', 'S', 'W']
+            lbl_angles = numpy.arange(0, 360, 360 / len(labels))
+            label_x = 0.5 - 0.54 * numpy.cos(numpy.radians(lbl_angles + 90))
+            label_y = 0.5 + 0.54 * numpy.sin(numpy.radians(lbl_angles + 90))
+            for i in range(len(labels)):
+                self.ax.text(label_x[i], label_y[i], labels[i], transform=self.ax.transAxes, ha='center', va='center')
 
-    if plot_type == "planes":
-        ax.plane(azimuths, dips, color="black")
-    elif plot_type == "poles":
-        ax.pole(azimuths, dips, color="black")
-    elif plot_type == "lines":
-        ax.line(dips, azimuths, color="black")
-    elif plot_type == "rakes":
-        ax.plane(azimuths, dips, color="black")
-        ax.rake(azimuths, dips, rakes, color="black")
-    else:
-        raise ValueError("plot_type deve ser \"poles\", \"lines\" ou \"rakes\".")
+        # Escreve o título do gráfico, se ele for definido e já não existir
+        if title and self.ax.get_title() != title:
+            self.ax.set_title(title, y=1.05, fontsize=14, fontweight='bold')
 
-    labels = ['N', 'E', 'S', 'W']
-    lbl_angles = numpy.arange(0, 360, 360 / len(labels))
-    label_x = 0.5 - 0.55 * numpy.cos(numpy.radians(lbl_angles + 90))
-    label_y = 0.5 + 0.55 * numpy.sin(numpy.radians(lbl_angles + 90))
-    for i in range(len(labels)):
-        ax.text(label_x[i], label_y[i], labels[i], transform=ax.transAxes, ha='center', va='center')
+        # Dip directions precisam ser convertidas pra strikes para plotar
+        if plane_azimuth_type == "dip direction":
+            azimuths -= 90
 
-    plots_folder = os.getcwd() + "/plots"
-    if not os.path.exists(plots_folder):
-        os.makedirs(plots_folder)
-    plt.savefig(f"{plots_folder}/stereogram.png", dpi=300, format="png", transparent=True)
+        # Plota os contornos de densidade quando marcado pelo usuário
+        if plot_density:
+            if plot_type == "rakes":
+                self.ax.density_contourf(azimuths, dips, rakes, measurement=plot_type, cmap=colormap)
+            else:
+                self.ax.density_contourf(azimuths, dips, measurement="poles" if plot_type == "planes" else plot_type, cmap=colormap)
+
+        # Plota as medidas
+        if plot_type == "planes":
+            self.ax.plane(azimuths, dips, color=color)
+        elif plot_type == "poles":
+            self.ax.pole(azimuths, dips, color=color, marker=marker)
+        elif plot_type == "lines":
+            self.ax.line(dips, azimuths, color=color, marker=marker)
+        elif plot_type == "rakes":
+            self.ax.plane(azimuths, dips, color=color)
+            self.ax.rake(azimuths, dips, rakes, color=color, marker=marker)
+        else:
+            raise ValueError("plot_type deve ser \"poles\", \"lines\" ou \"rakes\".")
+
+        # Cria um novo item na legenda para as medidas plotadas
+        if plot_type == "planes":
+            symbol = Line2D([0], [0], color=color, linestyle='-', linewidth=1.5)
+        else:
+            symbol = Line2D([0], [0], color=color, marker=marker, linestyle='None')
+        self.legend["markers"].append(symbol)
+        self.legend["labels"].append(f"{label if label != "" else "---"} (n = {len(azimuths)})")
+
+        # Exibe a legenda, caso marcado pelo usuário, ou remove ela, caso desmarcado
+        if show_legend:
+            plt.subplots_adjust(left=0.05, bottom=0.17, right=0.95, top=0.9)
+            h = len(self.legend["markers"])
+            self.ax.legend(self.legend["markers"], self.legend["labels"], loc='lower center', fontsize=9,
+                           bbox_to_anchor=(0.5, -0.144 - (h-1) * 0.053), facecolor='none')
+        else:
+            if self.ax.get_legend():
+                self.ax.get_legend().remove()
+
+        # Salva a figura como uma imagem para exibi-la na tela de plotagem depois
+        plots_folder = os.getcwd() + "/plots"
+        if not os.path.exists(plots_folder):
+            os.makedirs(plots_folder)
+        plt.savefig(f"{plots_folder}/stereogram.png", dpi=600, format="png", transparent=True)

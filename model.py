@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-@author: Gabriel Maccari
-"""
+""" @author: Gabriel Maccari """
 
 import csv
 import pandas
@@ -388,7 +386,7 @@ class DataHandler:
 
     def export_geodataframe(self, path: str, layer_name: str = "pontos"):
         """
-        Exporta o GeoDataFrame aramazenado no atributo "gdf" da classe para um arquivo vetorial ou tabela.
+        Exporta o GeoDataFrame armazenado no atributo "gdf" da classe para um arquivo vetorial ou tabela.
         :param path: Caminho do arquivo de saída.
         :param layer_name: Nome da camada (para arquivos geopackage).
         :return: Nada
