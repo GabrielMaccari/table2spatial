@@ -26,10 +26,10 @@ MEASUREMENT_TYPES = {
 }
 
 MARKERS = {
-    'Círculo': 'o',
-    'Triângulo': '^',
-    'Quadrado': 's',
-    'Losango': 'D'
+    'Círculo': {"marker": 'o', "size": 6},
+    'Triângulo': {"marker": '^', "size": 6},
+    'Quadrado': {"marker": 's', "size": 5},
+    'Losango': {"marker": 'D', "size": 5}
 }
 
 PLOT_WIDTH = 350
@@ -224,11 +224,11 @@ class StereogramWindow(QtWidgets.QMainWindow):
             show_legend = self.show_legend_chk.isChecked()
             label = self.label_edt.text()
             color = self.color_btn.text()
-            marker = MARKERS[self.marker_cbx.currentText()]
+            marker = self.marker_cbx.currentText()
             title = None if self.title_edt.text() == "" else self.title_edt.text()
 
-            azimuths = self.df[self.azimuths_column_cbx.currentText()].dropna().to_numpy()
-            dips = self.df[self.dips_column_cbx.currentText()].dropna().to_numpy()
+            azimuths = self.df[self.azimuths_column_cbx.currentText()].to_numpy()  # TODO dropar nans só onde todos os componentes da medida forem vazias
+            dips = self.df[self.dips_column_cbx.currentText()].to_numpy()
             rakes = None
 
             if msr_type.startswith("Planos"):
@@ -238,6 +238,8 @@ class StereogramWindow(QtWidgets.QMainWindow):
                 rakes = self.df[self.rakes_column_cbx.currentText()].dropna().to_numpy()
             else:
                 plot_type = "lines"
+
+            azimuths, dips, rakes = self.check_pairs_and_trios(azimuths, dips, rakes)
 
             az_type = MEASUREMENT_TYPES[msr_type][0].lower() if MEASUREMENT_TYPES[msr_type][0] != "Trend" else "strike"
 
@@ -250,8 +252,40 @@ class StereogramWindow(QtWidgets.QMainWindow):
                 self.add_btn.setEnabled(False)
 
             toggle_wait_cursor(False)
+        except IndexError as error:
+            handle_exception(error, "stereogram - ok_button_clicked()", "A quantidade de componentes das medidas não é a mesma. Confira se há dados faltando.", self)
         except Exception as error:
             handle_exception(error, "stereogram - ok_button_clicked()", "Ops! Ocorreu um erro ao plotar o gráfico!", self)
+
+    @staticmethod
+    def check_pairs_and_trios(azimuths, dips, rakes):
+        indices_to_delete = []
+
+        for i in range(min(azimuths.size, dips.size)):
+            az, dip = azimuths[i], dips[i]
+
+            if rakes is not None:
+                rake = rakes[i]
+                if numpy.isnan(az) and numpy.isnan(dip) and numpy.isnan(rake):
+                    indices_to_delete.append(i)
+                elif (numpy.isnan(az) or numpy.isnan(dip) or numpy.isnan(rake)) and not (
+                        numpy.isnan(az) and numpy.isnan(dip) and numpy.isnan(rake)):
+                    raise IndexError(f"A medida {az}/{dip}/{rake} (linha {i+1}) é inválida, pois um dos componentes "
+                                     f"está faltando (nan).")
+            else:
+                if numpy.isnan(az) and numpy.isnan(dip):
+                    indices_to_delete.append(i)
+                elif (numpy.isnan(az) and not numpy.isnan(dip)) or (not numpy.isnan(az) and numpy.isnan(dip)):
+                    raise IndexError(f"A medida {az}/{dip} (linha {i+1}) é inválida, pois um dos componentes está "
+                                     f"faltando (nan).")
+
+        azimuths = numpy.delete(azimuths, indices_to_delete)
+        dips = numpy.delete(dips, indices_to_delete)
+
+        if rakes is not None:
+            rakes = numpy.delete(rakes, indices_to_delete)
+
+        return azimuths, dips, rakes
 
     def load_image(self):
         self.image_btn.setIcon(QtGui.QIcon("plots/stereogram.png"))
@@ -281,7 +315,7 @@ class StereogramWindow(QtWidgets.QMainWindow):
 
     def plot_stereogram(self, azimuths: numpy.array, dips: numpy.array, rakes: numpy.array = None,
                         plot_type: str = "poles", plane_azimuth_type: str = "strike", title: str | None = None,
-                        color: str = "black", marker: str = 'o', plot_density: bool = False,
+                        color: str = "black", marker: str = 'Círculo', plot_density: bool = False,
                         colormap: str = "Grays", show_legend: bool = True, label: str = "") -> None:
         """
         :param azimuths: Array contendo os azimutes (strikes, dip directions ou trends)
@@ -299,13 +333,6 @@ class StereogramWindow(QtWidgets.QMainWindow):
         :return: Nada.
         """
         new_figure = self.fig is None
-
-        if rakes is not None and not (len(azimuths) == len(dips) == len(rakes)):
-            raise IndexError(f"A quantidade de azimutes, mergulhos e rakes não é a mesma (azimuths={len(azimuths)}, "
-                             f"dips={len(dips)}, rakes={len(rakes)}).")
-        elif rakes is None and not (len(azimuths) == len(dips)):
-            raise IndexError(f"A quantidade de azimutes e mergulhos não é a mesma (azimuths={len(azimuths)}, "
-                             f"dips={len(dips)}).")
 
         # Caso seja um novo gráfico, cria e configura a figura base (gráfico, grid e rótulos)
         if new_figure:
@@ -336,16 +363,19 @@ class StereogramWindow(QtWidgets.QMainWindow):
             else:
                 self.ax.density_contourf(azimuths, dips, measurement="poles" if plot_type == "planes" else plot_type, cmap=colormap)
 
+        # Os marcadores têm tamanhos levemente diferentes, então precisa especificar o tamanho para ficarem todos iguais
+        mk, sz = MARKERS[marker]["marker"], MARKERS[marker]["size"]
+
         # Plota as medidas
         if plot_type == "planes":
             self.ax.plane(azimuths, dips, color=color)
         elif plot_type == "poles":
-            self.ax.pole(azimuths, dips, color=color, marker=marker)
+            self.ax.pole(azimuths, dips, color=color, marker=mk, markersize=sz)
         elif plot_type == "lines":
-            self.ax.line(dips, azimuths, color=color, marker=marker)
+            self.ax.line(dips, azimuths, color=color, marker=mk, markersize=sz)
         elif plot_type == "rakes":
             self.ax.plane(azimuths, dips, color=color)
-            self.ax.rake(azimuths, dips, rakes, color=color, marker=marker)
+            self.ax.rake(azimuths, dips, rakes, color=color, marker=mk, markersize=sz)
         else:
             raise ValueError("plot_type deve ser \"poles\", \"lines\" ou \"rakes\".")
 
@@ -353,7 +383,7 @@ class StereogramWindow(QtWidgets.QMainWindow):
         if plot_type == "planes":
             symbol = Line2D([0], [0], color=color, linestyle='-', linewidth=1.5)
         else:
-            symbol = Line2D([0], [0], color=color, marker=marker, linestyle='None')
+            symbol = Line2D([0], [0], color=color, marker=mk, markersize=sz, linestyle='None')
         self.legend["markers"].append(symbol)
         self.legend["labels"].append(f"{label if label != "" else "---"} (n = {len(azimuths)})")
 
