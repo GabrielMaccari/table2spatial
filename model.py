@@ -316,6 +316,8 @@ class DataHandler:
                 sheet_df = self.excel_file.parse(sheet_name=s)
 
             if merge_column in sheet_df.columns:
+                if sheet_df[merge_column].duplicated().any():
+                    raise Exception(f"A coluna {merge_column} possui valores duplicados na planilha {s}.")
                 sheets_to_merge.append(s)
                 sheet_dfs.append(self.process_data(sheet_df))
                 merge_column_dtypes.append(sheet_df[merge_column].dtype)
