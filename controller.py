@@ -21,6 +21,8 @@ class UIController:
         self.column_list_widgets = []
         self.dtypes_list = []
 
+        self.no_coordinates_mode = False
+
         self.view.show()
 
         # Conecta os botões da interface às funções do controlador
@@ -115,6 +117,10 @@ class UIController:
         self.view.z_cbx.setEnabled(False)
         self.view.z_ok_icon.setEnabled(False)
 
+        # Desmarca o modo sem coordenadas e chama explicitamente a função relacionada
+        self.view.no_coordinates_chk.setChecked(False)
+        self.no_coordinates_mode_toggled()
+
         # Reconecta os componentes depois de configurar a interface
         self.connect_import_screen_components(True)
 
@@ -129,6 +135,7 @@ class UIController:
             self.view.x_cbx.currentTextChanged.connect(self.check_if_selected_xyz_is_valid)
             self.view.y_cbx.currentTextChanged.connect(self.check_if_selected_xyz_is_valid)
             self.view.z_cbx.currentTextChanged.connect(self.check_if_selected_xyz_is_valid)
+            self.view.no_coordinates_chk.checkStateChanged.connect(self.no_coordinates_mode_toggled)
         else:
             self.view.sheet_cbx.disconnect()
             self.view.crs_cbx.disconnect()
@@ -136,6 +143,7 @@ class UIController:
             self.view.x_cbx.disconnect()
             self.view.y_cbx.disconnect()
             self.view.z_cbx.disconnect()
+            self.view.no_coordinates_chk.disconnect()
 
     def fill_xyz_combos(self):
         for combo in (self.view.x_cbx, self.view.y_cbx, self.view.z_cbx):
@@ -204,29 +212,60 @@ class UIController:
         except Exception as error:
             self.handle_exception(error, "crs_selected()")
 
+    def no_coordinates_mode_toggled(self):
+        try:
+            no_coordinates_mode = self.view.no_coordinates_chk.isChecked()
+
+            self.view.crs_cbx.setEnabled(not no_coordinates_mode)
+            self.view.dms_chk.setEnabled(not no_coordinates_mode)
+            self.view.x_cbx.setEnabled(not no_coordinates_mode)
+            self.view.y_cbx.setEnabled(not no_coordinates_mode)
+            self.view.x_ok_icon.setEnabled(not no_coordinates_mode)
+            self.view.y_ok_icon.setEnabled(not no_coordinates_mode)
+
+            if no_coordinates_mode:
+                self.view.z_cbx.setEnabled(False)
+                self.view.z_ok_icon.setEnabled(False)
+                self.view.import_ok_btn.setEnabled(True)
+                self.view.import_ok_btn.setEnabled(True)
+            else:
+                crs_key = self.view.crs_cbx.currentText()
+                crs_type = CRS_DICT[crs_key]["type"]
+                self.view.z_cbx.setEnabled(True if crs_type == "Geographic 3D CRS" else False)
+                self.view.z_ok_icon.setEnabled(True if crs_type == "Geographic 3D CRS" else False)
+                self.check_if_selected_xyz_is_valid()
+
+        except Exception as error:
+            self.handle_exception(error, "import_ok_button_clicked()")
+
     def import_ok_button_clicked(self):
         try:
             toggle_wait_cursor(True)
 
-            crs_key = self.view.crs_cbx.currentText()
-            crs_type = CRS_DICT[crs_key]["type"]
-            x_column = self.view.x_cbx.currentText()
-            y_column = self.view.y_cbx.currentText()
-            z_column = (self.view.z_cbx.currentText() if crs_type == "Geographic 3D CRS" else None)
-            dms = self.view.dms_chk.isChecked()
+            self.no_coordinates_mode = self.view.no_coordinates_chk.isChecked()
 
-            self.model.set_geodataframe_geometry(crs_key, x_column, y_column, z_column, dms)
-            self.update_column_list()
-            self.view.switch_stack(0)
-
-            self.view.merge_button.setEnabled(True if self.model.excel_file and len(self.model.excel_file.sheet_names) > 1 else False)
-            self.view.reproject_button.setEnabled(True)
+            self.view.merge_button.setEnabled(self.model.excel_file and len(self.model.excel_file.sheet_names) > 1)
+            self.view.reproject_button.setEnabled(not self.no_coordinates_mode)
             self.view.export_button.setEnabled(True)
             self.view.graph_button.setEnabled(True)
 
-            crs_label = f"{self.model.gdf.crs.name} ({self.model.gdf.crs.type_name})"
-            label = f"Pontos: {len(self.model.gdf.index)}    SRC: {crs_label}"
-            self.view.bottom_label.setText(label if len(label) < 85 else f"Pontos: {len(self.model.gdf.index)}")
+            if not self.no_coordinates_mode:
+                crs_key = self.view.crs_cbx.currentText()
+                crs_type = CRS_DICT[crs_key]["type"]
+                x_column = self.view.x_cbx.currentText()
+                y_column = self.view.y_cbx.currentText()
+                z_column = (self.view.z_cbx.currentText() if crs_type == "Geographic 3D CRS" else None)
+                dms = self.view.dms_chk.isChecked()
+
+                self.model.set_geodataframe_geometry(crs_key, x_column, y_column, z_column, dms)
+
+                crs_label = f"{self.model.gdf.crs.name} ({self.model.gdf.crs.type_name})"
+                label = f"Pontos: {len(self.model.gdf.index)}    SRC: {crs_label}"
+                # 85 porque é um soft cap do que cabe na interface
+                self.view.bottom_label.setText(label if len(label) < 85 else f"Pontos: {len(self.model.gdf.index)}")
+
+            self.update_column_list()
+            self.view.switch_stack(0)
 
             toggle_wait_cursor(False)
         except Exception as error:
@@ -462,14 +501,24 @@ class UIController:
 
     def export_button_clicked(self):
         try:
+            if self.no_coordinates_mode:
+                output_formats = (
+                    "Formatos suportados (*.csv *.xlsx);;"
+                    "Comma Separated Values (*.csv);;"
+                    "Pasta de Trabalho do Excel (*.xlsx)"
+                )
+            else:
+                output_formats = (
+                    "Formatos suportados (*.gpkg *.geojson *.shp *.csv *.xlsx);;"
+                    "Geopackage (*.gpkg);;"
+                    "GeoJSON (*.geojson);;"
+                    "Shapefile (*.shp);;"
+                    "Comma Separated Values (*.csv);;"
+                    "Pasta de Trabalho do Excel (*.xlsx)"
+                )
+
             file_name = show_file_dialog(
-                caption="Salvar arquivo", mode="save", parent=self.view,
-                extension_filter="Formatos suportados (*.gpkg *.geojson *.shp *.csv *.xlsx);;"
-                                 "Geopackage (*.gpkg);;"
-                                 "GeoJSON (*.geojson);;"
-                                 "Shapefile (*.shp);;"
-                                 "Comma Separated Values (*.csv);;"
-                                 "Pasta de Trabalho do Excel (*.xlsx)"
+                caption="Salvar arquivo", mode="save", parent=self.view, extension_filter=output_formats
             )
 
             if file_name == "":

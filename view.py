@@ -78,6 +78,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.z_ok_icon = QtWidgets.QPushButton(icon=QtGui.QIcon("icons/circle.png"))
         self.z_ok_icon.setFlat(True)
         self.z_ok_icon.setEnabled(False)
+        self.no_coordinates_chk = QtWidgets.QCheckBox("O arquivo não possui coordenadas", self.import_stack)
         self.import_ok_btn = QtWidgets.QPushButton("OK", self.import_stack)
         self.import_cancel_btn = QtWidgets.QPushButton("Cancelar", self.import_stack)
 
@@ -105,6 +106,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.import_stack_layout.addWidget(self.z_lbl, row, 0, 1, 1)
         self.import_stack_layout.addWidget(self.z_cbx, row, 1, 1, 18)
         self.import_stack_layout.addWidget(self.z_ok_icon, row, 19, 1, 1)
+        row += 1
+        self.import_stack_layout.addWidget(self.no_coordinates_chk, row, 0, 1, 20)
         row += 1
         self.import_stack_layout.addWidget(self.import_ok_btn, row, 0, 1, 4)
         self.import_stack_layout.addWidget(self.import_cancel_btn, row, 4, 1, 4)
@@ -169,7 +172,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.reproject_stack_layout.addWidget(self.reproject_cancel_btn, row, 2, 1, 4)
 
         self.reproject_stack_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
-
 
         # RÓTULO INFERIOR
         self.bottom_label = QtWidgets.QLabel("")

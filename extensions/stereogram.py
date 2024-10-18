@@ -39,7 +39,7 @@ class StereogramWindow(QtWidgets.QMainWindow):
     def __init__(self, parent: QtWidgets.QMainWindow, df: pandas.DataFrame):
         super(StereogramWindow, self).__init__(parent)
         self.parent = parent
-        self.df = df.drop(columns="geometry")
+        self.df = df.drop(columns="geometry") if "geometry" in df.columns else df
         self.fig = None
         self.ax = None
         self.legend = {"markers": [], "labels": []}

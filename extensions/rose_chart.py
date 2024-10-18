@@ -19,7 +19,7 @@ class RoseChartWindow(QtWidgets.QMainWindow):
     def __init__(self, parent: QtWidgets.QMainWindow, df: pandas.DataFrame):
         super(RoseChartWindow, self).__init__(parent)
         self.parent = parent
-        self.df = df.drop(columns="geometry")
+        self.df = df.drop(columns="geometry") if "geometry" in df.columns else df
 
         self.setWindowTitle('Diagrama de Roseta')
         self.setWindowIcon(QtGui.QIcon('icons/graph.png'))

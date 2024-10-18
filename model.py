@@ -308,10 +308,15 @@ class DataHandler:
         sheets_to_merge, sheets_to_skip = [], []
         sheet_dfs, merge_column_dtypes = [], []
 
+        no_coordinates_mode = True
+
         # Itera pelo ExcelFile, convertendo as planilhas para DFs, e verifica se cada uma contém a coluna de mescla
         for s in self.excel_file.sheet_names:
             if s == self.excel_file.sheet_names[0]:
-                sheet_df = pandas.DataFrame(self.gdf).drop(columns=["geometry"])
+                sheet_df = pandas.DataFrame(self.gdf)
+                if "geometry" in sheet_df.columns:
+                    sheet_df = sheet_df.drop(columns=["geometry"])
+                    no_coordinates_mode = False
             else:
                 sheet_df = self.excel_file.parse(sheet_name=s)
 
@@ -340,7 +345,8 @@ class DataHandler:
         columns = [merge_column] + cols
         df = df[columns]
 
-        self.gdf = geopandas.GeoDataFrame(df, geometry=self.gdf.geometry, crs=self.gdf.crs)
+        self.gdf = geopandas.GeoDataFrame(df, geometry=None if no_coordinates_mode else self.gdf.geometry,
+                                          crs=None if no_coordinates_mode else self.gdf.crs)
 
         return sheets_to_merge, sheets_to_skip
 
