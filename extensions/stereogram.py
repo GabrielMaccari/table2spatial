@@ -9,14 +9,12 @@ import os
 import matplotlib.pyplot as plt
 from PyQt6 import QtCore, QtGui, QtWidgets
 from matplotlib.lines import Line2D
+import matplotlib.colors as mcolors
 from icecream import ic
 
 from extensions.shared_functions import handle_exception, toggle_wait_cursor, select_figure_save_location
 
 matplotlib.use("svg")
-
-COLORMAPS = ('Greys', 'Purples', 'Blues', 'Greens', 'Oranges', 'Reds', 'YlOrBr', 'YlOrRd', 'OrRd', 'PuRd', 'RdPu',
-             'BuPu', 'GnBu', 'PuBu', 'YlGnBu', 'PuBuGn', 'BuGn', 'YlGn')
 
 MEASUREMENT_TYPES = {
     'Planos (dip direction/dip)': ('Dip direction', 'Dip'),
@@ -32,7 +30,18 @@ MARKERS = {
     'Losango': {"marker": 'D', "size": 5}
 }
 
-PLOT_WIDTH = 350
+COLORMAPS = {
+    "Exhalitic": mcolors.LinearSegmentedColormap.from_list("Exhalitic", ["white", "#404040"], N=10),
+    "Granitic": mcolors.LinearSegmentedColormap.from_list("Granitic", ["white", "#7c202b"], N=10),
+    "Gneissic": mcolors.LinearSegmentedColormap.from_list("Gneissic", ["white", "#584468"], N=10),
+    "Mafic": mcolors.LinearSegmentedColormap.from_list("Mafic", ["white", "#304531"], N=10),
+    "Plutonic": mcolors.LinearSegmentedColormap.from_list("Plutonic", ["white", "#843d66"], N=10),
+    "Sedimentary": mcolors.LinearSegmentedColormap.from_list("Sedimentary", ["white", "#5b483f"], N=10),
+    "Rhyolitic": mcolors.LinearSegmentedColormap.from_list("Rhyolitic", ["white", "#ae612d"], N=10),
+    "Cenozoic": mcolors.LinearSegmentedColormap.from_list("Cenozoic", ["white", "#b19c29"], N=10),
+}
+
+PLOT_WIDTH = 350  # Largura da tela de exibição dos diagramas
 
 
 class StereogramWindow(QtWidgets.QMainWindow):
@@ -52,7 +61,7 @@ class StereogramWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(self.frame_stack)
 
         # CONFIG PAGE
-        self.config_layout = QtWidgets.QVBoxLayout()
+        self.config_layout = QtWidgets.QGridLayout()
         self.config_layout.setSpacing(5)
         self.config_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignCenter)
         self.config_page = QtWidgets.QWidget(self.frame_stack)
@@ -69,9 +78,6 @@ class StereogramWindow(QtWidgets.QMainWindow):
         self.measurement_type_cbx = QtWidgets.QComboBox(self.config_page)
         self.measurement_type_cbx.addItems(MEASUREMENT_TYPES)
         self.measurement_type_cbx.setMinimumWidth(300)
-
-        sublayout1 = QtWidgets.QGridLayout()
-
         self.azimuths_column_lbl = QtWidgets.QLabel(lb1, self.config_page)
         self.azimuths_column_cbx = QtWidgets.QComboBox(self.config_page)
         self.azimuths_column_cbx.addItems(self.filter_angle_columns("azimuth"))
@@ -82,20 +88,9 @@ class StereogramWindow(QtWidgets.QMainWindow):
         self.rakes_column_lbl.setEnabled(False)
         self.rakes_column_cbx = QtWidgets.QComboBox(self.config_page)
         self.rakes_column_cbx.setEnabled(False)
-
-        sublayout1.addWidget(self.azimuths_column_lbl, 0, 0, 1, 1)
-        sublayout1.addWidget(self.azimuths_column_cbx, 0, 1, 1, 1)
-        sublayout1.addWidget(self.dips_column_lbl, 1, 0, 1, 1)
-        sublayout1.addWidget(self.dips_column_cbx, 1, 1, 1, 1)
-        sublayout1.addWidget(self.rakes_column_lbl, 2, 0, 1, 1)
-        sublayout1.addWidget(self.rakes_column_cbx, 2, 1, 1, 1)
-
         self.plot_poles_chk = QtWidgets.QCheckBox("Plotar planos como polos", self.config_page)
         self.density_contour_chk = QtWidgets.QCheckBox("Plotar contornos de densidade", self.config_page)
         self.show_legend_chk = QtWidgets.QCheckBox("Mostrar legenda", self.config_page)
-
-        sublayout2 = QtWidgets.QGridLayout()
-
         self.label_lbl = QtWidgets.QLabel("Rótulo das medidas:", self.config_page)
         self.label_lbl.setEnabled(False)
         self.label_edt = QtWidgets.QLineEdit("Planos", self.config_page)
@@ -107,30 +102,40 @@ class StereogramWindow(QtWidgets.QMainWindow):
         self.marker_lbl = QtWidgets.QLabel("Marcador de linhas/polos:", self.config_page)
         self.marker_cbx = QtWidgets.QComboBox(self.config_page)
         self.marker_cbx.addItems(MARKERS.keys())
+        self.colormap_lbl = QtWidgets.QLabel("Cores de densidade:", self.config_page)
+        self.colormap_lbl.setEnabled(False)
+        self.colormap_cbx = QtWidgets.QComboBox(self.config_page)
+        self.colormap_cbx.addItems(COLORMAPS.keys())
+        self.colormap_cbx.setEnabled(False)
+        self.ok_btn = QtWidgets.QPushButton("OK", self.config_page)
 
-        sublayout2.addWidget(self.label_lbl, 0, 0, 1, 1)
-        sublayout2.addWidget(self.label_edt, 0, 1, 1, 2)
-        sublayout2.addWidget(self.color_lbl, 1, 0, 1, 1)
-        sublayout2.addWidget(self.color_btn, 1, 1, 1, 2)
-        sublayout2.addWidget(self.marker_lbl, 2, 0, 1, 1)
-        sublayout2.addWidget(self.marker_cbx, 2, 1, 1, 2)
-
-        self.ok_btn = QtWidgets.QPushButton("OK")
-
-        self.config_layout.addWidget(self.title_lbl)
-        self.config_layout.addWidget(self.title_edt)
-        self.config_layout.addWidget(self.measurement_type_lbl)
-        self.config_layout.addWidget(self.measurement_type_cbx)
-        self.config_layout.addLayout(sublayout1)
-        self.config_layout.addWidget(self.plot_poles_chk)
-        self.config_layout.addWidget(self.density_contour_chk)
-        self.config_layout.addWidget(self.show_legend_chk)
-        self.config_layout.addLayout(sublayout2)
-        self.config_layout.addWidget(self.ok_btn)
+        self.config_layout.addWidget(self.title_lbl, 0, 0, 1, 4)
+        self.config_layout.addWidget(self.title_edt, 1, 0, 1, 4)
+        self.config_layout.addWidget(self.measurement_type_lbl, 2, 0, 1, 4)
+        self.config_layout.addWidget(self.measurement_type_cbx, 3, 0, 1, 4)
+        self.config_layout.addWidget(self.azimuths_column_lbl, 4, 0, 1, 1)
+        self.config_layout.addWidget(self.azimuths_column_cbx, 4, 1, 1, 3)
+        self.config_layout.addWidget(self.dips_column_lbl, 5, 0, 1, 1)
+        self.config_layout.addWidget(self.dips_column_cbx, 5, 1, 1, 3)
+        self.config_layout.addWidget(self.rakes_column_lbl, 6, 0, 1, 1)
+        self.config_layout.addWidget(self.rakes_column_cbx, 6, 1, 1, 3)
+        self.config_layout.addWidget(self.plot_poles_chk, 7, 0, 1, 4)
+        self.config_layout.addWidget(self.density_contour_chk, 8, 0, 1, 4)
+        self.config_layout.addWidget(self.show_legend_chk, 9, 0, 1, 4)
+        self.config_layout.addWidget(self.label_lbl, 10, 0, 1, 2)
+        self.config_layout.addWidget(self.label_edt, 10, 2, 1, 2)
+        self.config_layout.addWidget(self.color_lbl, 11, 0, 1, 2)
+        self.config_layout.addWidget(self.color_btn, 11, 2, 1, 2)
+        self.config_layout.addWidget(self.marker_lbl, 12, 0, 1, 2)
+        self.config_layout.addWidget(self.marker_cbx, 12, 2, 1, 2)
+        self.config_layout.addWidget(self.colormap_lbl, 13, 0, 1, 2)
+        self.config_layout.addWidget(self.colormap_cbx, 13, 2, 1, 2)
+        self.config_layout.addWidget(self.ok_btn, 14, 0, 1, 4)
 
         self.measurement_type_cbx.currentTextChanged.connect(self.measurement_type_selected)
         self.show_legend_chk.checkStateChanged.connect(self.show_legend_checkbox_checked)
         self.color_btn.clicked.connect(self.color_button_clicked)
+        self.density_contour_chk.checkStateChanged.connect(self.density_contour_checkbox_checked)
         self.ok_btn.clicked.connect(self.ok_button_clicked)
 
         self.initial_size = self.layout().sizeHint()
@@ -214,6 +219,11 @@ class StereogramWindow(QtWidgets.QMainWindow):
         self.label_lbl.setEnabled(show_legend)
         self.label_edt.setEnabled(show_legend)
 
+    def density_contour_checkbox_checked(self):
+        plot_density = self.density_contour_chk.isChecked()
+        self.colormap_lbl.setEnabled(plot_density)
+        self.colormap_cbx.setEnabled(plot_density)
+
     def ok_button_clicked(self):
         try:
             toggle_wait_cursor(True)
@@ -226,8 +236,11 @@ class StereogramWindow(QtWidgets.QMainWindow):
             color = self.color_btn.text()
             marker = self.marker_cbx.currentText()
             title = None if self.title_edt.text() == "" else self.title_edt.text()
+            colormap = self.colormap_cbx.currentText()
 
-            azimuths = self.df[self.azimuths_column_cbx.currentText()].to_numpy()  # TODO dropar nans só onde todos os componentes da medida forem vazias
+            show_colorbar = False  # TODO adicionar widgets para selecionar se mostra ou não a escala de cores
+
+            azimuths = self.df[self.azimuths_column_cbx.currentText()].to_numpy()
             dips = self.df[self.dips_column_cbx.currentText()].to_numpy()
             rakes = None
 
@@ -243,7 +256,8 @@ class StereogramWindow(QtWidgets.QMainWindow):
 
             az_type = MEASUREMENT_TYPES[msr_type][0].lower() if MEASUREMENT_TYPES[msr_type][0] != "Trend" else "strike"
 
-            self.plot_stereogram(azimuths, dips, rakes, plot_type, az_type, title, color, marker, plot_density, "Grays", show_legend, label)
+            self.plot_stereogram(azimuths, dips, rakes, plot_type, az_type, title, color, marker, plot_density,
+                                 colormap, show_colorbar, show_legend, label)
 
             self.frame_stack.setCurrentIndex(1)
             self.load_image()
@@ -253,9 +267,15 @@ class StereogramWindow(QtWidgets.QMainWindow):
 
             toggle_wait_cursor(False)
         except IndexError as error:
-            handle_exception(error, "stereogram - ok_button_clicked()", "A quantidade de componentes das medidas não é a mesma. Confira se há dados faltando.", self)
+            handle_exception(
+                error, "stereogram - ok_button_clicked()",
+                "A quantidade de componentes das medidas não é a mesma. Confira se há dados faltando.", self
+            )
         except Exception as error:
-            handle_exception(error, "stereogram - ok_button_clicked()", "Ops! Ocorreu um erro ao plotar o gráfico!", self)
+            handle_exception(
+                error, "stereogram - ok_button_clicked()",
+                "Ops! Ocorreu um erro ao plotar o gráfico!", self
+            )
 
     @staticmethod
     def check_pairs_and_trios(azimuths, dips, rakes):
@@ -284,6 +304,13 @@ class StereogramWindow(QtWidgets.QMainWindow):
 
         if rakes is not None:
             rakes = numpy.delete(rakes, indices_to_delete)
+            if rakes.size == 0:
+                raise Exception("Coluna de obliquidades (rake) não deve estar vazia.")
+
+        if azimuths.size == 0:
+            raise Exception("Coluna de azimutes (strike, dip direction ou trend) não deve estar vazia.")
+        if dips.size == 0:
+            raise Exception("Coluna de mergulhos (dip ou plunge) não deve estar vazia.")
 
         return azimuths, dips, rakes
 
@@ -316,7 +343,8 @@ class StereogramWindow(QtWidgets.QMainWindow):
     def plot_stereogram(self, azimuths: numpy.array, dips: numpy.array, rakes: numpy.array = None,
                         plot_type: str = "poles", plane_azimuth_type: str = "strike", title: str | None = None,
                         color: str = "black", marker: str = 'Círculo', plot_density: bool = False,
-                        colormap: str = "Grays", show_legend: bool = True, label: str = "") -> None:
+                        colormap: str = "Exhalitic", show_colorbar: bool = False, show_legend: bool = True,
+                        label: str = "") -> None:
         """
         :param azimuths: Array contendo os azimutes (strikes, dip directions ou trends)
         :param dips: Array contendo os ângulos de mergulho (dips ou plunges)
@@ -328,6 +356,7 @@ class StereogramWindow(QtWidgets.QMainWindow):
         :param marker: O marcador a ser usado para representar linhas e polos.
         :param plot_density: Plotar ou não contornos de densidade para as medidas.
         :param colormap: Rampa de cores para os contornos de densidade.
+        :param show_colorbar: Mostrar ou não a escala da rampa de cores.
         :param show_legend: Mostrar ou não a legenda.
         :param label: O rótulo das medidas.
         :return: Nada.
@@ -356,12 +385,20 @@ class StereogramWindow(QtWidgets.QMainWindow):
         if plane_azimuth_type == "dip direction":
             azimuths -= 90
 
-        # Plota os contornos de densidade quando marcado pelo usuário
+        # Plota os contornos de densidade e sua escala quando marcado pelo usuário
         if plot_density:
-            if plot_type == "rakes":
-                self.ax.density_contourf(azimuths, dips, rakes, measurement=plot_type, cmap=colormap)
+            colors = COLORMAPS[colormap]
+            if plot_type in ("planes", "poles"):
+                density = self.ax.density_contourf(azimuths, dips, measurement="poles", cmap=colors)
+            elif plot_type == "rakes":
+                density = self.ax.density_contourf(azimuths, dips, rakes, measurement="rakes", cmap=colors)
+            elif plot_type == "lines":
+                density = self.ax.density_contourf(dips, azimuths, measurement="lines", cmap=colors)
             else:
-                self.ax.density_contourf(azimuths, dips, measurement="poles" if plot_type == "planes" else plot_type, cmap=colormap)
+                raise Exception(f"Contornos de densidade com plot_type = \"{plot_type}\" não podem ser plotados.")
+
+            if show_colorbar:
+                self.fig.colorbar(density, pad=0.08, shrink=0.5)
 
         # Os marcadores têm tamanhos levemente diferentes, então precisa especificar o tamanho para ficarem todos iguais
         mk, sz = MARKERS[marker]["marker"], MARKERS[marker]["size"]
