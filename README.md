@@ -8,11 +8,12 @@
       <img alt="Static Badge" src="https://img.shields.io/github/downloads/FrostPredator/table2spatial/total">
       <br>
       <br>
-      <img src="https://github.com/FrostPredator/table2spatial/assets/114439033/b4501243-54e0-44bf-bea9-3945660ce4c8">
+      <img src="https://github.com/user-attachments/assets/c2844d2a-de54-46af-82f6-b2b3b39768f7">
   <p>
 </div>
 
 ## Features
+
 - Importa tabelas de pontos nos formatos XLSX, CSV, ODT e XLSM
 - Lê coordenadas em graus decimais, UTM e GMS (GG°MM'SS,ssss"D)
 - Mescla planilhas de um mesmo arquivo usando uma coluna identificadora
@@ -35,17 +36,23 @@ Organize seus dados em uma tabela em formato XLSX, XLSM, CSV ou ODT, com cada li
 
 Com os dados devidamente organizados, clique no botão <img src="https://github.com/FrostPredator/table2spatial/assets/114439033/1ad6f7b4-f95a-4ad0-bad5-ef648e87263d" width="20"> na barra de ferramentas do table2spatial e selecione o arquivo da tabela. Na interface de configuração (imagem abaixo), selecione a planilha do arquivo que contém as coordenadas dos pontos, o sistema de referências (SRC) das coordenadas e também as colunas onde as coordenadas de cada eixo se encontram. Clique no botão OK para importar os dados.
 
-<img src="https://github.com/FrostPredator/table2spatial/assets/114439033/818413b5-7ecd-47bf-ba85-0805d256501e" width="300">
+> [!IMPORTANT]
+> Apenas colunas com dados exclusivamente numéricos dentro do intervalo esperado para cada coordenada aparecerão como opções para coordenadas nessa interface. Os intervalos aceitos para cada coordenada são definidos pela área de uso do SRC selecionado (veja em [EPSG.io](https://www.epsg.io)).
 
-**Obs:** Apenas colunas com dados exclusivamente numéricos dentro do intervalo esperado para cada coordenada aparecerão como opções para X e Y nessa interface. Os intervalos aceitos para cada coordenada são definidos pela área de uso do SRC selecionado (veja em [EPSG.io](https://www.epsg.io)). 
+<img src="https://github.com/user-attachments/assets/8eed69c4-f37d-4164-aa96-198396d713cc" width="300">
+
+> [!TIP]
+> Você pode importar tabelas sem coordenadas usando a opção "O arquivo não possui coordenadas". Dessa forma, você poderá acessar algumas das funcionalidades, como plotar estereogramas e diagramas de roseta, sem precisar de coordenadas para cada linha.
 
 As colunas da tabela então aparecerão em uma lista na interface do table2spatial. Você pode converter os tipos de dados de cada coluna a partir dessa interface, selecionando-os nas caixas de opções à direita do nome da coluna, e também pode excluir e renomear colunas clicando com o botão direito sobre elas.
 
-<img src="https://github.com/FrostPredator/table2spatial/assets/114439033/ace5366a-0d40-4ae9-b964-5f31295df0f8" width="300">
+<img src="https://github.com/user-attachments/assets/f8668d6b-b3d4-47c7-9378-14f005e061bd" width="300">
 
-**Obs:** Uma coluna chamada _geometry_ aparecerá na lista de colunas. Ela contém a geometria dos pontos, isto é, os pares de coordenadas para cada ponto. Quando você reprojeta os pontos entre SRCs no table2spatial, as coordenadas são modificadas internamente nessa coluna.
+> [!NOTE]
+> Uma coluna chamada _geometry_ aparecerá na lista. Ela contém a geometria dos pontos, isto é, os pares de coordenadas para cada ponto. Quando você reprojeta os pontos entre SRCs no table2spatial, as coordenadas são modificadas internamente nessa coluna.
 
 ### 2. Mesclando Planilhas de um Arquivo
+
 Você pode mesclar múltiplas planilhas (abas) de um mesmo arquivo, desde que haja uma coluna identificadora em comum entre elas. Para realizar a mesclagem de planilhas, clique no botão <img src="https://github.com/FrostPredator/table2spatial/assets/114439033/5084056c-4e26-41e7-9c90-7de734b0ed49" width="20">, na barra de ferramentas, e então selecione a coluna identificadora. As planilhas serão mescladas com base na coluna selecionada, e um aviso será exibido, relatando o sucesso.
 
 No exemplo abaixo, a coluna **Cod_ponto** é usada para interligar as linhas das duas planilhas mescladas.
@@ -78,29 +85,40 @@ No exemplo abaixo, a coluna **Cod_ponto** é usada para interligar as linhas das
 | EX004     | -27,19588 | -48,76274 | 25/05/2022 |     Não     |    0     |                  |                   |
 
 ### 3. Reprojetando os Pontos para Outro SRC
+
 É possível reprojetar uma tabela de pontos usando o table2spatial. Para isso, depois de ter importado sua tabela, clique no botão <img src="https://github.com/FrostPredator/table2spatial/assets/114439033/1ad5a27e-d09b-4909-8e93-7083ea55cdf4" width="20">, na barra de ferramentas do programa. Uma nova aba aparecerá, mostrando o SRC atual do arquivo e uma caixa de seleção para escolha do novo SRC. Você pode digitar os primeiros caracteres do nome de um SRC nessa caixa para encontrá-lo mais facilmente. Clique em OK após selecionar o SRC para reprojetar.
 
 Você também pode marcar a caixa "Salvar coordenadas como colunas na tabela" para que o programa salve as coordenadas reprojetadas em colunas na tabela. Depois de marcar a caixa, insira nos campos X, Y (e Z, no caso de SRCs 3D) os nomes desejados para cada coluna.
 
 <img src="https://github.com/user-attachments/assets/ea124221-3328-4048-a734-71febcc32332" width="300">
 
-**Obs:** Caso você insira um nome de coluna que já existe na tabela, os dados da coluna em questão serão substituídos pelas novas coordenadas.
+> [!WARNING]
+> Caso você insira um nome de coluna que já existe na tabela, os dados da coluna em questão serão substituídos pelas novas coordenadas.
 
 ### 4. Exportando um Arquivo Vetorial
+
 Você pode exportar a tabela como um arquivo vetorial de pontos, em formato GeoPackage, GeoJSON ou Shapefile. Para isso, clique no botão <img src="https://github.com/user-attachments/assets/ceb20ff4-f859-4f3f-8c2a-2ac02db60779" width="20">, na barra de ferramentas. Uma caixa de diálogo aparecerá para escolher o formato de saída e salvar o arquivo. Caso o formato de saída seja GeoPackage, uma outra janela aparecerá em seguida para definir o nome da camada.
 
-**Observações:**
-- Você pode salvar múltiplas camadas dentro de um mesmo arquivo GeoPackage. Basta selecionar o mesmo arquivo ao exportar e então especificar um nome diferente para a nova camada a ser inserida. **Caso você defina um nome de camada que já existe dentro do arquivo, ela será substituída**.
-- Caso exporte o arquivo como GeoJSON, não há garantia de que seu programa de SIG (QGIS, ArcGIS, etc.) importará o arquivo com os tipos de dados que você especificou para cada coluna/atributo, pois esses tipos de dados não ficam definidos dentro do arquivo.
-- Ao exportar como Shapefile, todos os nomes de colunas/atributos serão cortados para um limite de 10 caracteres que é estabelecido pelo formato Shapefile.
-- O formato Shapefile não suporta campos de data e hora (Datetime). Logo, ocorrerá um erro ao tentar exportar para Shapefile uma tabela de pontos com uma coluna Datetime. Para resolver, exporte para outro formato ou converta a coluna de data e hora para String.
+> [!IMPORTANT]
+> - Você pode salvar múltiplas camadas dentro de um mesmo arquivo GeoPackage. Basta selecionar o mesmo arquivo ao exportar e então especificar um nome diferente para a nova camada a ser inserida. **Caso você defina um nome de camada que já existe dentro do arquivo, ela será substituída**.
+> - Caso exporte o arquivo como GeoJSON, não há garantia de que seu programa de SIG (QGIS, ArcGIS, etc.) importará o arquivo com os tipos de dados que você especificou para cada coluna/atributo, pois esses tipos de dados não ficam definidos dentro do arquivo.
+> - Ao exportar como Shapefile, todos os nomes de colunas/atributos serão cortados para um limite de 10 caracteres que é estabelecido pelo formato Shapefile. O formato Shapefile também não suporta campos de data e hora (Datetime). Logo, ocorrerá um erro ao tentar exportar para Shapefile uma tabela de pontos com uma coluna Datetime. Para resolver, exporte para outro formato ou converta a coluna de data e hora para String.
 
 ### 5. Criando Estereogramas e Diagramas de Roseta simples
 
 #### 5.1. Estereogramas
 
-Clique no botão <img src="https://github.com/user-attachments/assets/90457e8d-f5a0-413b-a097-657e4a1bcd30" width="20"> na barra de ferramentas e selecione a opção "Estereograma". Uma janela de configurações aparecerá. Na caixa de seleção de Tipo de medida, escolha o tipo de estrutura a ser representada (planos, linhas ou linhas contidas em planos) e os tipos de ângulo a serem usados.
+Clique no botão <img src="https://github.com/user-attachments/assets/90457e8d-f5a0-413b-a097-657e4a1bcd30" width="20"> na barra de ferramentas e selecione a opção "Estereograma". Uma janela de configurações aparecerá, com os parâmetros a seguir.
 
+<img src="https://github.com/user-attachments/assets/0a34a8da-0e24-40d2-85cd-e8e785d42d8d" width="500">
+
+- **Título do gráfico:** Um título para o estereograma (deixe em branco para um gráfico sem título).
+- **Tipo de medida:** O tipo de estrutura e notação da medida a ser plotada. Veja a _Note_ abaixo.
+- **Strikes/Dip directions/Trends:** A coluna da tabela que contém os _strikes_, _dip directions_ ou _trends_ da estrutura (dependendo do tipo de medida que foi selecionado acima). Veja a _Note_ abaixo.
+- **Dips/Plunges:** A coluna da tabela que contém os _dips_ ou _plunges_ da estrutura (dependendo do tipo de medida que foi selecionado acima). Veja a _Note_ abaixo.
+- **Rakes:** A coluna da tabela que contém os _rakes_ da estrutura. Disponível apenas quando a opção Linhas em planos (strike/dip/rake) é selecionada. Veja a _Note_ abaixo.
+
+> [!IMPORTANT]
 > **Dip direction:** Sentido de mergulho do plano (0 - 360°). Representa o azimute para onde o plano está mergulhando. Está sempre a 90° do *strike*.
 > 
 > **Strike:** Direção do plano (0-360°). Corresponde ao azimute da linha de intersecção entre o plano e a superfície horizontal. **Para que o *strike* seja usado no table2spatial, é necessário que seja utilizada a regra da mão direita** para definir qual o ângulo a ser utilizado (o *strike* deve ser sempre igual ao *dip direction* - 90°).
@@ -113,17 +131,26 @@ Clique no botão <img src="https://github.com/user-attachments/assets/90457e8d-f
 > 
 > **Rake:** Obliquidade da linha no plano. É o ângulo entre a linha e o *strike* (considerando-se a regra da mão direita) do plano onde ela está contida, medido sobre o plano (0 - 180°).
 
-Depois de escolher o tipo de medida, selecione as colunas da tabela que contêm cada uma das medidas em questão.
+- **Plotar planos como polos:** Caso marcada, plota apenas os polos dos planos, em vez dos grandes círculos.
+- **Plotar contornos de densidade:** Caso marcada, plota contornos de densidade para a medida. Disponível apenas para a primeira medida plotada no estereograma.
+- **Mostrar legenda:** Caso marcada, exibe uma legenda dos símbolos e quantidade de medidas plotadas no estereograma.
+- **Rótulo das medidas:** Um rótulo que será exibido na legenda para a medida a ser plotada. Disponível apenas quando a opção de mostrar legenda é checada.
+- **Cor da simbologia:** A cor do marcador ou grande círculo que será plotado.
+- **Marcador de linhas/polos:** O estilo de marcador que será usado para plotar os polos ou linhas.
+- **Cores de densidade:** A rampa de cores que será usada ao plotar contornos de densidade. Disponível apenas quando a opção de plotar contornos de densidade é checada. As opções de cores são mostradas abaixo.
 
-<img src="https://github.com/user-attachments/assets/58d83439-4a36-403e-8898-46f2b25c6bcb" width="250">
-
-Marque a caixa "Plotar planos como pólos" caso queira representar os planos apenas com seus polos. Do contrário, planos são representados por padrão com grandes círculos.
+<img src="https://github.com/user-attachments/assets/29b2b863-7b40-4dc7-99d0-85dbb8ad2611">
 
 Clique em OK para criar o estereograma, que aparecerá em uma nova janela.
 
-<img src="https://github.com/user-attachments/assets/d1ea14bc-7690-4fb7-a145-5776b322bedd" width="250">
+
 
 Caso queira salvar o estereograma gerado, clique no botão <img src="https://github.com/user-attachments/assets/e7637387-19a1-4e2e-898d-01d1b8a41e01" width="20">.
+
+Você também pode acrescentar novas medidas a um mesmo estereograma, clicando no botão <img src="https://github.com/user-attachments/assets/bab8f7a9-f965-4084-a58f-6a15d4b59a3d" width="20">.
+
+> [!NOTE]
+> Você pode plotar até 3 medidas em cada estereograma.
 
 #### 5.2. Diagramas de Roseta
 
@@ -138,4 +165,7 @@ Clique em OK para gerar o diagrama, que aparecerá em um nova janela.
 Caso queira salvar o estereograma gerado, clique no botão <img src="https://github.com/user-attachments/assets/e7637387-19a1-4e2e-898d-01d1b8a41e01" width="20">.
 
 ## Atribuições
+
+table2spatial © 2022 Gabriel Maccari
+
 Icons by [icons8](https://icons8.com/)
