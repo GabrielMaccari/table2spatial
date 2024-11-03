@@ -550,12 +550,12 @@ class UIController:
             if action is self.view.graph_stereogram_action:
                 graph_window = StereogramWindow(self.view, pandas.DataFrame(self.model.gdf))
                 graph_window.show()
-                center_window_on_point(graph_window, graph_window.parent.geometry().center())
+                center_window_on_point(graph_window, self.view.geometry().center())
 
             elif action is self.view.graph_rosediagram_action:
                 graph_window = RoseChartWindow(self.view, pandas.DataFrame(self.model.gdf))
                 graph_window.show()
-                center_window_on_point(graph_window, graph_window.parent.geometry().center())
+                center_window_on_point(graph_window, self.view.geometry().center())
 
         except Exception as error:
             self.handle_exception(error, "graph_button_clicked()", "Ops! Ocorreu um erro.")

@@ -20,6 +20,7 @@ class RoseChartWindow(QtWidgets.QMainWindow):
         super(RoseChartWindow, self).__init__(parent)
         self.parent = parent
         self.df = df.drop(columns="geometry") if "geometry" in df.columns else df
+        self.fig = None
 
         self.setWindowTitle('Diagrama de Roseta')
         self.setWindowIcon(QtGui.QIcon('icons/graph.png'))
@@ -93,7 +94,7 @@ class RoseChartWindow(QtWidgets.QMainWindow):
             mirror_data = self.mirror_directions_chk.isChecked()
             sectors = self.divisions_edt.value()
 
-            plot_rose_chart(azimuths, mirror_data, sectors)
+            self.plot_rose_chart(azimuths, mirror_data, sectors)
 
             self.frame_stack.setCurrentIndex(1)
             self.load_image()
@@ -103,8 +104,9 @@ class RoseChartWindow(QtWidgets.QMainWindow):
             handle_exception(error, "stereogram - ok_button_clicked()", "Ops! Ocorreu um erro ao plotar o gráfico!", self)
 
     def load_image(self):
-        self.image_btn.setIcon(QtGui.QIcon("plots/rose_chart.png"))
-        pixmap = QtGui.QPixmap("plots/rose_chart.png")
+        img_path = f"{os.getcwd()}\\plots\\rose_chart.png"
+        self.image_btn.setIcon(QtGui.QIcon(img_path))
+        pixmap = QtGui.QPixmap(img_path)
         height = int(pixmap.height() * PLOT_WIDTH / pixmap.width())
         self.image_btn.setIconSize(QtCore.QSize(PLOT_WIDTH, height))
         self.image_btn.resize(PLOT_WIDTH, height)
@@ -115,54 +117,53 @@ class RoseChartWindow(QtWidgets.QMainWindow):
             file_path, file_extension = select_figure_save_location(self)
             if not file_path:
                 return
-            plt.savefig(file_path, dpi=600, format=file_extension, transparent=True)
+            self.fig.savefig(file_path, dpi=600, format=file_extension, transparent=True)
         except Exception as error:
             handle_exception(error, "rose_chart - save_button_clicked()", "Ops! Ocorreu um erro!", self)
 
+    def plot_rose_chart(self, azimuths, mirror=False, number_of_sectors=8):
+        sector_width = 360 / number_of_sectors
+        start_angle = 0 - (sector_width / 2)
 
-def plot_rose_chart(azimuths, mirror=False, number_of_sectors=8):
-    sector_width = 360 / number_of_sectors
-    start_angle = 0 - (sector_width / 2)
+        bin_edges = numpy.arange(start_angle, 361, sector_width)
+        # Realiza a contagem de valores em cada uma das direções a partir das divisões criadas
+        counts, bin_edges = numpy.histogram(azimuths, bin_edges)
+        # Soma a primeira e a última contagem (ambas são N)
+        counts[0] += counts[-1]
 
-    bin_edges = numpy.arange(start_angle, 361, sector_width)
-    # Realiza a contagem de valores em cada uma das direções a partir das divisões criadas
-    counts, bin_edges = numpy.histogram(azimuths, bin_edges)
-    # Soma a primeira e a última contagem (ambas são N)
-    counts[0] += counts[-1]
+        self.fig = plt.figure(figsize=(5, 5), dpi=300)
+        ax = self.fig.add_subplot(111, projection='polar')
 
-    fig = plt.figure(figsize=(5, 5), dpi=300)
-    ax = fig.add_subplot(111, projection='polar')
+        if mirror:
+            # Divide os dados em dois conjuntos (0-180 e 180-360), soma os dois e duplica
+            half = numpy.sum(numpy.split(counts, 2), 0)
+            counts = numpy.concatenate([half, half])
 
-    if mirror:
-        # Divide os dados em dois conjuntos (0-180 e 180-360), soma os dois e duplica
-        half = numpy.sum(numpy.split(counts, 2), 0)
-        counts = numpy.concatenate([half, half])
+        ax.bar(numpy.deg2rad(numpy.arange(0, 360, sector_width)), counts, width=numpy.deg2rad(sector_width*0.75),
+               bottom=0.0, color="black")  # edgecolor="white", linewidth=0.1
 
-    ax.bar(numpy.deg2rad(numpy.arange(0, 360, sector_width)), counts, width=numpy.deg2rad(sector_width*0.75),
-           bottom=0.0, color="black")  # edgecolor="white", linewidth=0.1
+        r_grid = (numpy.arange(0, max(counts), max(counts) / 5))
+        r_grid = numpy.append(r_grid, max(counts))
 
-    r_grid = (numpy.arange(0, max(counts), max(counts) / 5))
-    r_grid = numpy.append(r_grid, max(counts))
+        ax.set_facecolor('white')
+        ax.set_theta_zero_location('N')
+        ax.set_theta_direction(-1)
+        ax.set_thetagrids(numpy.arange(0, 360, 90), labels=[])
+        ax.set_rgrids(r_grid, labels=[])
+        ax.grid(alpha=0.1, color="black")
 
-    ax.set_facecolor('white')
-    ax.set_theta_zero_location('N')
-    ax.set_theta_direction(-1)
-    ax.set_thetagrids(numpy.arange(0, 360, 90), labels=[])
-    ax.set_rgrids(r_grid, labels=[])
-    ax.grid(alpha=0.1, color="black")
+        # Fiz os rótulos dessa forma pra figura ficar igual aos do estereograma
+        labels = ['N', 'E', 'S', 'W']
+        lbl_angles = numpy.arange(0, 360, 360 / len(labels))
+        label_x = 0.5 - 0.54 * numpy.cos(numpy.radians(lbl_angles + 90))
+        label_y = 0.5 + 0.54 * numpy.sin(numpy.radians(lbl_angles + 90))
+        for i in range(len(labels)):
+            ax.text(label_x[i], label_y[i], labels[i], transform=ax.transAxes, ha='center', va='center')
 
-    # Fiz os rótulos dessa forma pra figura ficar igual à do estereograma
-    labels = ['N', 'E', 'S', 'W']
-    lbl_angles = numpy.arange(0, 360, 360 / len(labels))
-    label_x = 0.5 - 0.54 * numpy.cos(numpy.radians(lbl_angles + 90))
-    label_y = 0.5 + 0.54 * numpy.sin(numpy.radians(lbl_angles + 90))
-    for i in range(len(labels)):
-        ax.text(label_x[i], label_y[i], labels[i], transform=ax.transAxes, ha='center', va='center')
+        n = len(azimuths[~numpy.isnan(azimuths)])
+        ax.text(-0.05, -0.057, f"n = {n}", transform=ax.transAxes, fontsize=8.5, verticalalignment='bottom', horizontalalignment='left')
 
-    n = len(azimuths[~numpy.isnan(azimuths)])
-    ax.text(-0.05, -0.057, f"n = {n}", transform=ax.transAxes, fontsize=8.5, verticalalignment='bottom', horizontalalignment='left')
-
-    plots_folder = os.getcwd() + "/plots"
-    if not os.path.exists(plots_folder):
-        os.makedirs(plots_folder)
-    plt.savefig(f"{plots_folder}/rose_chart.png", dpi=600, format="png", transparent=True)
+        plots_folder = f"{os.getcwd()}\\plots"
+        if not os.path.exists(plots_folder):
+            os.makedirs(plots_folder)
+        self.fig.savefig(f"{plots_folder}\\rose_chart.png", dpi=600, format="png", transparent=True)

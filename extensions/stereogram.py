@@ -24,10 +24,10 @@ MEASUREMENT_TYPES = {
 }
 
 MARKERS = {
-    'Círculo': {"marker": 'o', "size": 6},
-    'Triângulo': {"marker": '^', "size": 6},
-    'Quadrado': {"marker": 's', "size": 5},
-    'Losango': {"marker": 'D', "size": 5}
+    'Círculo': {"marker": 'o', "size": 5},
+    'Triângulo': {"marker": '^', "size": 5},
+    'Quadrado': {"marker": 's', "size": 4},
+    'Losango': {"marker": 'D', "size": 4}
 }
 
 COLORMAPS = {
@@ -39,6 +39,8 @@ COLORMAPS = {
     "Sedimentary": mcolors.LinearSegmentedColormap.from_list("Sedimentary", ["white", "#5b483f"], N=10),
     "Rhyolitic": mcolors.LinearSegmentedColormap.from_list("Rhyolitic", ["white", "#ae612d"], N=10),
     "Cenozoic": mcolors.LinearSegmentedColormap.from_list("Cenozoic", ["white", "#b19c29"], N=10),
+    "Carbonatic": mcolors.LinearSegmentedColormap.from_list("Carbonatic", ["white", "#2b769e"], N=10),
+    "Pelitic": mcolors.LinearSegmentedColormap.from_list("Pelitic", ["white", "#5e5956"], N=10),
 }
 
 PLOT_WIDTH = 350  # Largura da tela de exibição dos diagramas
@@ -315,8 +317,8 @@ class StereogramWindow(QtWidgets.QMainWindow):
         return azimuths, dips, rakes
 
     def load_image(self):
-        self.image_btn.setIcon(QtGui.QIcon("plots/stereogram.png"))
-        pixmap = QtGui.QPixmap("plots/stereogram.png")
+        self.image_btn.setIcon(QtGui.QIcon(f"{os.getcwd()}\\plots\\stereogram.png"))
+        pixmap = QtGui.QPixmap(f"{os.getcwd()}\\plots\\stereogram.png")
         height = int(pixmap.height() * PLOT_WIDTH / pixmap.width())
         self.image_btn.setIconSize(QtCore.QSize(PLOT_WIDTH, height))
         self.image_btn.resize(PLOT_WIDTH, height)
@@ -329,7 +331,7 @@ class StereogramWindow(QtWidgets.QMainWindow):
             file_path, file_extension = select_figure_save_location(self)
             if not file_path:
                 return
-            plt.savefig(file_path, dpi=600, format=file_extension, transparent=True)
+            self.fig.savefig(file_path, dpi=600, format=file_extension, transparent=True)
         except Exception as error:
             handle_exception(error, "stereogram - save_button_clicked()", "Ops! Ocorreu um erro!", self)
 
@@ -344,7 +346,7 @@ class StereogramWindow(QtWidgets.QMainWindow):
                         plot_type: str = "poles", plane_azimuth_type: str = "strike", title: str | None = None,
                         color: str = "black", marker: str = 'Círculo', plot_density: bool = False,
                         colormap: str = "Exhalitic", show_colorbar: bool = False, show_legend: bool = True,
-                        label: str = "") -> None:
+                        label: str = "", marker_alpha=1) -> None:
         """
         :param azimuths: Array contendo os azimutes (strikes, dip directions ou trends)
         :param dips: Array contendo os ângulos de mergulho (dips ou plunges)
@@ -359,12 +361,14 @@ class StereogramWindow(QtWidgets.QMainWindow):
         :param show_colorbar: Mostrar ou não a escala da rampa de cores.
         :param show_legend: Mostrar ou não a legenda.
         :param label: O rótulo das medidas.
+        :param marker_alpha: Transparência do preenchimento do marcador (0-1):
         :return: Nada.
         """
         new_figure = self.fig is None
 
         # Caso seja um novo gráfico, cria e configura a figura base (gráfico, grid e rótulos)
         if new_figure:
+            plt.close(self.fig)
             self.fig, self.ax = mplstereonet.subplots(figsize=[5, 5], projection="stereonet")
             self.ax.set_facecolor('white')
             self.ax.set_azimuth_ticks([])
@@ -407,9 +411,9 @@ class StereogramWindow(QtWidgets.QMainWindow):
         if plot_type == "planes":
             self.ax.plane(azimuths, dips, color=color)
         elif plot_type == "poles":
-            self.ax.pole(azimuths, dips, color=color, marker=mk, markersize=sz)
+            self.ax.pole(azimuths, dips, color=color, marker=mk, markersize=sz, alpha=marker_alpha)
         elif plot_type == "lines":
-            self.ax.line(dips, azimuths, color=color, marker=mk, markersize=sz)
+            self.ax.line(dips, azimuths, color=color, marker=mk, markersize=sz, alpha=marker_alpha)
         elif plot_type == "rakes":
             self.ax.plane(azimuths, dips, color=color)
             self.ax.rake(azimuths, dips, rakes, color=color, marker=mk, markersize=sz)
@@ -426,7 +430,7 @@ class StereogramWindow(QtWidgets.QMainWindow):
 
         # Exibe a legenda, caso marcado pelo usuário, ou remove ela, caso desmarcado
         if show_legend:
-            plt.subplots_adjust(left=0.05, bottom=0.17, right=0.95, top=0.9)
+            self.fig.subplots_adjust(left=0.05, bottom=0.17, right=0.95, top=0.9)
             h = len(self.legend["markers"])
             self.ax.legend(self.legend["markers"], self.legend["labels"], loc='lower center', fontsize=9,
                            bbox_to_anchor=(0.5, -0.144 - (h-1) * 0.053), facecolor='none')
@@ -434,8 +438,11 @@ class StereogramWindow(QtWidgets.QMainWindow):
             if self.ax.get_legend():
                 self.ax.get_legend().remove()
 
-        # Salva a figura como uma imagem para exibi-la na tela de plotagem depois
-        plots_folder = os.getcwd() + "/plots"
+        self.save_plot()
+
+    def save_plot(self):
+        plots_folder = os.getcwd() + "\\plots"
         if not os.path.exists(plots_folder):
             os.makedirs(plots_folder)
-        plt.savefig(f"{plots_folder}/stereogram.png", dpi=600, format="png", transparent=True)
+        image_path = f"{plots_folder}\\stereogram.png"
+        self.fig.savefig(image_path, dpi=600, format="png", transparent=True)
