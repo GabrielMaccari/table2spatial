@@ -227,7 +227,6 @@ class UIController:
                 self.view.z_cbx.setEnabled(False)
                 self.view.z_ok_icon.setEnabled(False)
                 self.view.import_ok_btn.setEnabled(True)
-                self.view.import_ok_btn.setEnabled(True)
             else:
                 crs_key = self.view.crs_cbx.currentText()
                 crs_type = CRS_DICT[crs_key]["type"]
@@ -236,7 +235,7 @@ class UIController:
                 self.check_if_selected_xyz_is_valid()
 
         except Exception as error:
-            self.handle_exception(error, "import_ok_button_clicked()")
+            self.handle_exception(error, "no_coordinates_mode_toggled()")
 
     def import_ok_button_clicked(self):
         try:
@@ -244,7 +243,9 @@ class UIController:
 
             self.no_coordinates_mode = self.view.no_coordinates_chk.isChecked()
 
-            self.view.merge_button.setEnabled(self.model.excel_file and len(self.model.excel_file.sheet_names) > 1)
+            self.view.merge_button.setEnabled(
+                self.model.excel_file is not None and len(self.model.excel_file.sheet_names) > 1
+            )
             self.view.reproject_button.setEnabled(not self.no_coordinates_mode)
             self.view.export_button.setEnabled(True)
             self.view.graph_button.setEnabled(True)
